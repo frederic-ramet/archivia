@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import Link from 'next/link';
 
 // Types for gallery items
 interface GalleryDocument {
@@ -19,12 +18,11 @@ interface GalleryDocument {
 }
 
 interface GalleryProps {
-  projectId: string;
   documents: GalleryDocument[];
   categories?: string[];
 }
 
-export default function Gallery({ projectId, documents, categories: providedCategories }: GalleryProps) {
+export default function Gallery({ documents, categories: providedCategories }: GalleryProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [selectedTag, setSelectedTag] = useState<string | undefined>();
   const [selectedItem, setSelectedItem] = useState<GalleryDocument | null>(null);
