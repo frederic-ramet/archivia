@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useRouter, useParams } from 'next/navigation';
 
 // Types for gallery items
 interface GalleryDocument {
@@ -23,6 +24,9 @@ interface GalleryProps {
 }
 
 export default function Gallery({ documents, categories: providedCategories }: GalleryProps) {
+  const router = useRouter();
+  const params = useParams();
+  const projectId = params.id as string;
   const [selectedCategory, setSelectedCategory] = useState<string | undefined>();
   const [selectedTag, setSelectedTag] = useState<string | undefined>();
   const [selectedItem, setSelectedItem] = useState<GalleryDocument | null>(null);
@@ -391,7 +395,7 @@ export default function Gallery({ documents, categories: providedCategories }: G
             className="group"
           >
             <button
-              onClick={() => setSelectedItem(doc)}
+              onClick={() => router.push(`/projects/${projectId}/documents/${doc.id}`)}
               className="block cursor-pointer w-full text-left"
             >
               <div className="relative overflow-hidden rounded-lg aspect-[4/3] bg-gray-100 hover:shadow-xl transition-shadow duration-300">
@@ -411,7 +415,7 @@ export default function Gallery({ documents, categories: providedCategories }: G
                   >
                     <p className="font-serif text-lg font-semibold">{doc.title}</p>
                     <p className="text-sm text-gray-300 mt-2">
-                      Cliquez pour voir les détails
+                      Cliquez pour ouvrir
                     </p>
                   </motion.div>
                 </div>
