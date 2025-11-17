@@ -12,7 +12,9 @@
     "clean": "pnpm -r clean",
     "db:generate": "pnpm --filter @archivia/database generate",
     "db:migrate": "pnpm --filter @archivia/database migrate",
-    "db:seed": "pnpm --filter @archivia/database seed"
+    "db:seed": "pnpm --filter @archivia/database seed",
+    "test:opale": "pnpm --filter @archivia/database test:opale",
+    "test:api": "./scripts/test-api.sh"
   },
   "keywords": [
     "heritage",

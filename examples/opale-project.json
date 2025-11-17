@@ -1,0 +1,318 @@
+{
+  "project": {
+    "id": "example-opale-uuid",
+    "name": "Collection Opale - Héritage Familial",
+    "slug": "opale-heritage",
+    "description": "Collection de 255 photographies familiales couvrant plusieurs générations (1920-1990). Cette collection retrace l'histoire d'une famille française à travers ses moments importants.",
+    "status": "active",
+    "isPublic": true,
+    "config": {
+      "features": {
+        "ocr": false,
+        "annotations": true,
+        "hotspots": true,
+        "stories": true,
+        "timeline": true,
+        "map": true,
+        "ontology": true,
+        "aiGeneration": true,
+        "publicReader": true,
+        "collaboration": false
+      },
+      "primaryLanguage": "fr",
+      "acceptedFormats": ["jpg", "png", "tiff"]
+    },
+    "branding": {
+      "primaryColor": "#8B7355",
+      "secondaryColor": "#D4C5B0",
+      "accentColor": "#4A6741",
+      "heroTitle": "Collection Opale",
+      "heroSubtitle": "Mémoire familiale en images",
+      "footerText": "Préservation du patrimoine familial"
+    },
+    "metadata": {
+      "institution": "Collection privée familiale",
+      "curator": "Famille Ramet",
+      "contributors": ["Frédéric Ramet", "Archives familiales"],
+      "periodStart": "1920",
+      "periodEnd": "2020",
+      "geographicScope": "France, région parisienne",
+      "themes": [
+        "Famille",
+        "Vie quotidienne",
+        "Traditions",
+        "Générations",
+        "Photographie amateur"
+      ],
+      "license": "CC BY-NC-SA 4.0"
+    },
+    "createdAt": "2025-11-17T08:00:00.000Z",
+    "updatedAt": "2025-11-17T08:30:00.000Z"
+  },
+  "documents": [
+    {
+      "id": "doc-001",
+      "title": "Portrait de famille - Années 1920",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C4.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C4_thumb.jpg",
+      "category": "Portrait",
+      "period": "1920",
+      "tags": ["portrait", "famille", "années 20", "noir et blanc"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Photo de famille formelle typique des années 1920.",
+      "position": 0
+    },
+    {
+      "id": "doc-002",
+      "title": "Mariage - Sortie de l'église",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C8.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C8_thumb.jpg",
+      "category": "Cérémonie",
+      "period": "1925",
+      "tags": ["mariage", "église", "célébration", "tradition"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Mariage catholique traditionnel à Paris.",
+      "position": 1
+    },
+    {
+      "id": "doc-003",
+      "title": "Vacances à la mer - Normandie",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C11.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C11_thumb.jpg",
+      "category": "Vacances",
+      "period": "1935",
+      "tags": ["plage", "vacances", "été", "Normandie"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Vacances estivales à Deauville.",
+      "position": 2
+    },
+    {
+      "id": "doc-004",
+      "title": "Communion solennelle",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C13.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C13_thumb.jpg",
+      "category": "Cérémonie",
+      "period": "1938",
+      "tags": ["communion", "religion", "enfance"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Première communion, rite de passage important.",
+      "position": 3
+    },
+    {
+      "id": "doc-005",
+      "title": "Jardin familial - Été",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C15.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C15_thumb.jpg",
+      "category": "Vie quotidienne",
+      "period": "1950",
+      "tags": ["jardin", "été", "détente", "après-guerre"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Moment de détente dans le jardin familial.",
+      "position": 4
+    },
+    {
+      "id": "doc-006",
+      "title": "Noël en famille",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C19.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C19_thumb.jpg",
+      "category": "Fête",
+      "period": "1955",
+      "tags": ["Noël", "fête", "famille", "traditions"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Célébration de Noël pendant les Trente Glorieuses.",
+      "position": 5
+    },
+    {
+      "id": "doc-007",
+      "title": "Baptême du petit-fils",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C22.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C22_thumb.jpg",
+      "category": "Cérémonie",
+      "period": "1965",
+      "tags": ["baptême", "bébé", "famille", "génération"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Continuation des traditions familiales.",
+      "position": 6
+    },
+    {
+      "id": "doc-008",
+      "title": "Réunion de famille - Anniversaire",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C25.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C25_thumb.jpg",
+      "category": "Fête",
+      "period": "1975",
+      "tags": ["anniversaire", "famille", "réunion", "années 70"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "50 ans de mariage des grands-parents.",
+      "position": 7
+    },
+    {
+      "id": "doc-009",
+      "title": "Vacances camping - Côte d'Azur",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C29.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C29_thumb.jpg",
+      "category": "Vacances",
+      "period": "1980",
+      "tags": ["camping", "vacances", "été", "Côte d'Azur"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Camping familial dans le sud.",
+      "position": 8
+    },
+    {
+      "id": "doc-010",
+      "title": "Quatre générations réunies",
+      "type": "image",
+      "filePath": "/uploads/opale-heritage/1_C34.jpg",
+      "thumbnailPath": "/uploads/opale-heritage/1_C34_thumb.jpg",
+      "category": "Portrait",
+      "period": "1990",
+      "tags": ["générations", "famille", "portrait", "héritage"],
+      "transcriptionStatus": "pending",
+      "historicalContext": "Photo rare de quatre générations.",
+      "position": 9
+    }
+  ],
+  "entities": [
+    {
+      "id": "entity-001",
+      "type": "person",
+      "name": "Grand-père Marcel",
+      "normalizedName": "marcel_ramet",
+      "description": "Patriarche de la famille, né en 1895",
+      "aliases": ["Marcel", "Pépé Marcel"],
+      "properties": {
+        "birthYear": 1895,
+        "deathYear": 1978,
+        "occupation": "Ouvrier métallurgiste"
+      },
+      "confidence": 0.95,
+      "source": "manual"
+    },
+    {
+      "id": "entity-002",
+      "type": "person",
+      "name": "Grand-mère Jeanne",
+      "normalizedName": "jeanne_ramet",
+      "description": "Épouse de Marcel, née en 1900",
+      "aliases": ["Jeanne", "Mémé Jeanne"],
+      "properties": {
+        "birthYear": 1900,
+        "deathYear": 1985,
+        "occupation": "Mère au foyer"
+      },
+      "confidence": 0.95,
+      "source": "manual"
+    },
+    {
+      "id": "entity-003",
+      "type": "place",
+      "name": "Maison familiale",
+      "normalizedName": "maison_banlieue",
+      "description": "Maison acquise en 1948",
+      "aliases": ["La maison", "Chez les grands-parents"],
+      "properties": {
+        "acquiredYear": 1948,
+        "location": "Banlieue parisienne"
+      },
+      "confidence": 0.9,
+      "source": "manual"
+    },
+    {
+      "id": "entity-004",
+      "type": "event",
+      "name": "Mariage 1925",
+      "normalizedName": "mariage_1925",
+      "description": "Mariage de Marcel et Jeanne",
+      "aliases": ["Le mariage des grands-parents"],
+      "properties": {
+        "date": "1925",
+        "location": "Église Saint-Michel, Paris"
+      },
+      "confidence": 1.0,
+      "source": "manual"
+    }
+  ],
+  "entityRelationships": [
+    {
+      "sourceId": "entity-001",
+      "targetId": "entity-002",
+      "relationType": "married_to",
+      "properties": { "year": 1925 },
+      "weight": 1.0
+    },
+    {
+      "sourceId": "entity-001",
+      "targetId": "entity-004",
+      "relationType": "participant_in",
+      "properties": { "role": "groom" },
+      "weight": 1.0
+    },
+    {
+      "sourceId": "entity-001",
+      "targetId": "entity-003",
+      "relationType": "lives_in",
+      "properties": { "since": 1948 },
+      "weight": 0.9
+    }
+  ],
+  "annotations": [
+    {
+      "id": "annot-001",
+      "documentId": "doc-001",
+      "type": "hotspot",
+      "content": "Grand-père Marcel à gauche",
+      "x": 25,
+      "y": 40,
+      "width": 15,
+      "height": 30,
+      "metadata": { "entityId": "entity-001" },
+      "status": "published"
+    },
+    {
+      "id": "annot-002",
+      "documentId": "doc-002",
+      "type": "note",
+      "content": "Le voile de Jeanne a été porté par trois générations",
+      "x": 50,
+      "y": 30,
+      "metadata": { "importance": "high" },
+      "status": "published"
+    }
+  ],
+  "generatedContent": {
+    "summary": "La Collection Opale retrace l'histoire d'une famille française sur quatre générations (1920-1990). À travers 10 photographies sélectionnées, nous découvrons les moments clés : portraits formels des années 1920, cérémonies religieuses (mariage, communion, baptême), vacances estivales (Normandie, Côte d'Azur), fêtes familiales (Noël, anniversaires), et la transmission intergénérationnelle.",
+    "timeline": [
+      { "year": 1920, "event": "Portrait de famille", "docId": "doc-001" },
+      { "year": 1925, "event": "Mariage Marcel et Jeanne", "docId": "doc-002" },
+      { "year": 1935, "event": "Vacances Normandie", "docId": "doc-003" },
+      { "year": 1938, "event": "Communion solennelle", "docId": "doc-004" },
+      { "year": 1950, "event": "Après-guerre au jardin", "docId": "doc-005" },
+      { "year": 1955, "event": "Noël familial", "docId": "doc-006" },
+      { "year": 1965, "event": "Baptême nouvelle génération", "docId": "doc-007" },
+      { "year": 1975, "event": "50 ans de mariage", "docId": "doc-008" },
+      { "year": 1980, "event": "Vacances camping", "docId": "doc-009" },
+      { "year": 1990, "event": "Quatre générations", "docId": "doc-010" }
+    ],
+    "themes": {
+      "transmission": "La collection montre clairement la transmission des traditions familiales à travers les générations.",
+      "ceremonies": "Les cérémonies religieuses (mariage, communion, baptême) structurent la vie familiale.",
+      "leisure": "L'évolution des loisirs : de la plage normande au camping sur la Côte d'Azur.",
+      "socialHistory": "Reflet de l'histoire sociale française : Trente Glorieuses, démocratisation des vacances."
+    },
+    "questions": [
+      "Comment les traditions familiales se transmettent-elles à travers les générations ?",
+      "Quel rôle jouent les cérémonies religieuses dans la cohésion familiale ?",
+      "Comment l'évolution des loisirs reflète-t-elle les changements sociaux ?",
+      "Que nous apprennent ces photos sur la France du XXe siècle ?"
+    ]
+  }
+}

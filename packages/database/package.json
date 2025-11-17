@@ -8,6 +8,8 @@
     "generate": "drizzle-kit generate:sqlite --config=drizzle.config.ts",
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
+    "test:opale": "tsx src/test-opale.ts",
+    "test:opale:cleanup": "tsx src/test-opale.ts --cleanup",
     "studio": "drizzle-kit studio",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist"
