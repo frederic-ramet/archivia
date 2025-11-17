@@ -94,6 +94,7 @@ export const entities = sqliteTable("entities", {
     enum: ["person", "place", "concept", "object", "event"],
   }).notNull(),
   name: text("name").notNull(),
+  normalizedName: text("normalized_name"),
   aliases: text("aliases", { mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
   description: text("description"),
   properties: text("properties", { mode: "json" })

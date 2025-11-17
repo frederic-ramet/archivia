@@ -1,6 +1,6 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
+import { migrate } from "drizzle-orm/libsql/migrator";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -11,18 +11,18 @@ async function main() {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  const dbPath = process.env.DATABASE_URL || "./data/archivia.db";
-  console.log(`Migrating database at: ${dbPath}`);
+  const dbUrl = process.env.DATABASE_URL || "file:./data/archivia.db";
+  console.log(`Migrating database at: ${dbUrl}`);
 
-  const sqlite = new Database(dbPath);
-  const db = drizzle(sqlite);
+  const client = createClient({ url: dbUrl });
+  const db = drizzle(client);
 
   console.log("Running migrations...");
 
-  migrate(db, { migrationsFolder: "./drizzle" });
+  await migrate(db, { migrationsFolder: "./drizzle" });
 
   console.log("Migrations completed successfully!");
-  sqlite.close();
+  client.close();
 }
 
 main().catch((err) => {
