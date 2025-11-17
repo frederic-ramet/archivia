@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import { SearchBar } from "./search-bar";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -20,6 +21,8 @@ export function Navigation() {
           <Link href="/" className="text-xl font-bold tracking-tight">
             Archivia
           </Link>
+
+          <SearchBar />
 
           <div className="flex items-center space-x-6">
             <Link
