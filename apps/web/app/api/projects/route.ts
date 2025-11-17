@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { db, projects } from "@archivia/database";
+import { db, projects, projectMembers } from "@archivia/database";
 import { eq, like, and, sql, desc } from "drizzle-orm";
 import {
   createProjectSchema,
@@ -11,6 +11,7 @@ import {
   parseBody,
   parseSearchParams,
 } from "@/lib/api-utils";
+import { auth } from "@/lib/auth";
 
 // GET /api/projects - List all projects with pagination and filtering
 export async function GET(request: NextRequest) {
@@ -77,6 +78,11 @@ export async function GET(request: NextRequest) {
 
 // POST /api/projects - Create a new project
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return errorResponse("Unauthorized", 401);
+  }
+
   const parsed = await parseBody(request, createProjectSchema);
 
   if ("error" in parsed) {
@@ -139,6 +145,13 @@ export async function POST(request: NextRequest) {
       .insert(projects)
       .values(projectData)
       .returning();
+
+    // Add creator as project owner
+    await db.insert(projectMembers).values({
+      projectId: created.id,
+      userId: session.user.id,
+      role: "owner",
+    });
 
     return successResponse(created, "Project created successfully", 201);
   } catch (err) {

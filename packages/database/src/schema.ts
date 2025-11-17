@@ -269,3 +269,26 @@ export const appConfig = sqliteTable("app_config", {
     .default(sql`CURRENT_TIMESTAMP`),
   updatedBy: text("updated_by").references(() => users.id),
 });
+
+// ============================================================================
+// Project members (multi-user permissions)
+// ============================================================================
+
+export const projectMembers = sqliteTable("project_members", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  role: text("role", { enum: ["owner", "editor", "viewer"] })
+    .notNull()
+    .default("viewer"),
+  addedAt: text("added_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  addedBy: text("added_by").references(() => users.id),
+});

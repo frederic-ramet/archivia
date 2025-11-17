@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { UploadModal } from "@/components/upload-modal";
+import { ProjectMembers } from "@/components/project-members";
+import { useSession } from "next-auth/react";
 
 interface Project {
   id: string;
@@ -66,6 +68,7 @@ interface Document {
 export default function ProjectDetailPage() {
   const params = useParams();
   const projectId = params.id as string;
+  const { data: session } = useSession();
 
   const [project, setProject] = useState<Project | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -83,6 +86,7 @@ export default function ProjectDetailPage() {
     content: string;
     metadata: { wordCount: number };
   } | null>(null);
+  const [userRole, setUserRole] = useState<"owner" | "editor" | "viewer" | "admin">("viewer");
 
   const handleGenerateStory = async () => {
     setGeneratingStory(true);
@@ -253,9 +257,35 @@ export default function ProjectDetailPage() {
       }
     }
 
+    async function fetchUserRole() {
+      if (!session?.user) return;
+
+      // Check if user is admin
+      if ((session.user as { role?: string }).role === "admin") {
+        setUserRole("admin");
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}/members`);
+        const data = await response.json();
+        if (data.success && data.data) {
+          const membership = data.data.find(
+            (m: { userId: string }) => m.userId === session.user.id
+          );
+          if (membership) {
+            setUserRole(membership.role);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch user role:", err);
+      }
+    }
+
     fetchProject();
     fetchDocuments();
-  }, [projectId, fetchDocuments]);
+    fetchUserRole();
+  }, [projectId, fetchDocuments, session]);
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -683,6 +713,11 @@ export default function ProjectDetailPage() {
         onClose={() => setShowUploadModal(false)}
         onUploadComplete={fetchDocuments}
       />
+
+      {/* Project Members Section */}
+      <div className="mt-8">
+        <ProjectMembers projectId={projectId} currentUserRole={userRole} />
+      </div>
     </div>
   );
 }
