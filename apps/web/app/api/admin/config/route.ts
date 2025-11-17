@@ -16,7 +16,7 @@ export async function GET() {
     const configs = await db.select().from(appConfig);
 
     // Mask sensitive values
-    const safeConfigs = configs.map((c) => ({
+    const safeConfigs = configs.map((c: typeof configs[0]) => ({
       key: c.key,
       value: c.encrypted ? "***ENCRYPTED***" : c.value,
       encrypted: c.encrypted,
