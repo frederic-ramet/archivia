@@ -8,6 +8,7 @@
     "generate": "drizzle-kit generate:sqlite --config=drizzle.config.ts",
     "migrate": "tsx src/migrate.ts",
     "seed": "tsx src/seed.ts",
+    "seed:admin": "tsx src/seed-admin.ts",
     "test:opale": "tsx src/test-opale.ts",
     "test:opale:cleanup": "tsx src/test-opale.ts --cleanup",
     "studio": "drizzle-kit studio",
@@ -16,10 +17,14 @@
   },
   "dependencies": {
     "@archivia/shared-types": "workspace:*",
+    "@auth/drizzle-adapter": "^1.11.1",
     "@libsql/client": "^0.15.15",
-    "drizzle-orm": "^0.44.7"
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.44.7",
+    "next-auth": "5.0.0-beta.30"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20.19.25",
     "drizzle-kit": "^0.20.12",
     "tsx": "^4.7.0",

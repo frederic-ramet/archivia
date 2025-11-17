@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 
 export function Navigation() {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
@@ -40,12 +42,41 @@ export function Navigation() {
             >
               Projets
             </Link>
+            {session?.user?.role === "admin" && (
+              <Link
+                href="/admin/settings"
+                className={`transition-colors ${
+                  isActive("/admin")
+                    ? "text-heritage-300"
+                    : "text-white/80 hover:text-white"
+                }`}
+              >
+                Admin
+              </Link>
+            )}
             <Link
               href="/projects/new"
               className="bg-heritage-600 hover:bg-heritage-500 px-4 py-2 rounded-md transition-colors"
             >
               Nouveau Projet
             </Link>
+            {status === "loading" ? (
+              <span className="text-white/60">...</span>
+            ) : session ? (
+              <button
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                Déconnexion
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                Connexion
+              </Link>
+            )}
           </div>
         </nav>
       </div>

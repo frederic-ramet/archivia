@@ -13,13 +13,16 @@
   "dependencies": {
     "@archivia/database": "workspace:*",
     "@archivia/shared-types": "workspace:*",
+    "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.44.7",
     "next": "14.2.3",
+    "next-auth": "5.0.0-beta.30",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^20.19.25",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
