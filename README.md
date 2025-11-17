@@ -4,12 +4,32 @@ Archivia est une plateforme moderne de numérisation, analyse et valorisation du
 
 ## Fonctionnalités
 
-- **Gestion multi-projets** : Créez et gérez plusieurs collections patrimoniales
-- **Upload de documents** : Drag & drop avec preview et métadonnées
-- **OCR intelligent** : Transcription automatique des manuscrits (à venir)
-- **Ontologie progressive** : Construction automatique du graphe de connaissances (à venir)
-- **Récits narratifs** : Création d'histoires guidées (à venir)
-- **Export statique** : Génération de sites HTML autonomes (à venir)
+### Gestion de Projet
+- **Multi-projets** : Créez et gérez plusieurs collections patrimoniales
+- **Upload de documents** : Drag & drop avec preview, miniatures automatiques et métadonnées
+- **Suppression sécurisée** : Nettoyage complet des fichiers associés
+- **Permissions multi-utilisateurs** : Rôles owner/editor/viewer par projet
+- **Authentification NextAuth** : Système de connexion sécurisé avec rôles admin/user
+
+### Intelligence Artificielle (Claude API)
+- **OCR Vision** : Transcription automatique d'images avec Claude Vision API
+- **Extraction d'entités** : Détection de personnes, lieux, événements, objets, concepts
+- **Relations sémantiques** : Construction automatique du graphe de connaissances
+- **Génération narrative** : Création d'histoires à partir des données du projet (3 styles, 3 longueurs)
+
+### Visualisation & Recherche
+- **Graphe d'entités** : Visualisation force-directed interactive en SVG
+- **Recherche sémantique** : Recherche full-text dans documents et entités avec scores de pertinence
+- **Dashboard Analytics** : Statistiques globales, métriques et activité récente (admin)
+
+### Export & Accessibilité
+- **Export HTML statique** : Génération de sites autonomes avec JSZip
+- **PWA (Progressive Web App)** : Installation mobile, mode hors-ligne, cache intelligent
+- **Internationalisation** : Interface bilingue Français/Anglais avec persistance des préférences
+
+### Tests & Qualité
+- **Suite de tests Vitest** : 20+ tests automatisés pour API et services
+- **TypeScript strict** : Typage complet avec validation Zod
 
 ## Prérequis
 
@@ -131,13 +151,21 @@ archivia/
 | `pnpm clean` | Nettoyer les builds |
 | `pnpm db:generate` | Générer les migrations Drizzle |
 | `pnpm db:migrate` | Appliquer les migrations |
+| `pnpm db:push` | Synchroniser le schéma avec la DB |
 | `pnpm db:seed` | Peupler la base avec des données de test |
+| `pnpm test` | Lancer les tests automatisés |
+| `pnpm test:watch` | Lancer les tests en mode watch |
 
 ## Technologies Utilisées
 
 - **Frontend** : Next.js 14, React 18, TypeScript, Tailwind CSS
 - **Backend** : Next.js API Routes, Drizzle ORM
-- **Base de données** : SQLite (better-sqlite3)
+- **Base de données** : libSQL/SQLite
+- **Authentification** : NextAuth v5 (credentials provider)
+- **Intelligence Artificielle** : Claude API (Anthropic SDK)
+- **Traitement d'images** : Sharp (miniatures)
+- **Export** : JSZip (génération HTML statique)
+- **Tests** : Vitest
 - **Validation** : Zod
 - **Monorepo** : pnpm workspaces
 
@@ -146,10 +174,16 @@ archivia/
 ### Projets
 
 - `GET /api/projects` - Lister les projets (pagination, filtres)
-- `POST /api/projects` - Créer un projet
+- `POST /api/projects` - Créer un projet (+ ajout owner automatique)
 - `GET /api/projects/:id` - Détails d'un projet
 - `PUT /api/projects/:id` - Modifier un projet
 - `DELETE /api/projects/:id` - Supprimer un projet
+- `GET /api/projects/:id/members` - Lister les membres
+- `POST /api/projects/:id/members` - Ajouter un membre (owner only)
+- `DELETE /api/projects/:id/members?memberId=` - Retirer un membre
+- `POST /api/projects/:id/export` - Exporter en HTML (ZIP)
+- `POST /api/projects/:id/story` - Générer une histoire narrative
+- `GET /api/projects/:id/entities` - Graphe d'entités du projet
 
 ### Documents
 
@@ -157,27 +191,51 @@ archivia/
 - `POST /api/documents` - Créer un document
 - `GET /api/documents/:id` - Détails d'un document
 - `PUT /api/documents/:id` - Modifier un document
-- `DELETE /api/documents/:id` - Supprimer un document
+- `DELETE /api/documents/:id` - Supprimer un document + fichiers
+- `POST /api/documents/:id/ocr` - Lancer l'OCR avec Claude Vision
+- `POST /api/documents/:id/extract-entities` - Extraire les entités IA
 
 ### Upload
 
-- `POST /api/upload` - Upload d'un fichier
+- `POST /api/upload` - Upload d'un fichier (avec génération miniature)
 - `PUT /api/upload` - Upload multiple (batch)
+
+### Recherche & Analytics
+
+- `GET /api/search?q=` - Recherche sémantique documents/entités
+- `GET /api/analytics` - Dashboard statistiques (admin only)
+
+### Authentification
+
+- `POST /api/auth/signin` - Connexion NextAuth
+- `POST /api/auth/signout` - Déconnexion
+- `GET /api/auth/session` - Session courante
 
 ## Configuration
 
 ### Variables d'Environnement
 
 ```bash
-# Base de données
-DATABASE_URL=./packages/database/data/archivia.db
+# Base de données (libSQL/SQLite)
+DATABASE_URL=file:./local.db
+
+# Authentification NextAuth
+NEXTAUTH_SECRET=votre-secret-aleatoire-32-chars-min
+NEXTAUTH_URL=http://localhost:3000
+
+# API Claude (pour OCR, extraction entités, génération histoires)
+ANTHROPIC_API_KEY=sk-ant-api03-votre-cle
 
 # Environnement
 NODE_ENV=development
+```
 
-# Future : Services AI
-# OPENAI_API_KEY=your_key_here
-# ANTHROPIC_API_KEY=your_key_here
+### Utilisateur par défaut (après seed)
+
+```
+Email: admin@archivia.fr
+Mot de passe: admin123
+Rôle: admin
 ```
 
 ### Personnalisation du Thème

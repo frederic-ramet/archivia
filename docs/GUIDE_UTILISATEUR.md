@@ -7,12 +7,22 @@ Bienvenue dans Archivia, votre plateforme de préservation et valorisation du pa
 ## Table des Matières
 
 1. [Démarrage Rapide](#démarrage-rapide)
-2. [Page d'Accueil](#page-daccueil)
-3. [Gestion des Projets](#gestion-des-projets)
-4. [Upload de Documents](#upload-de-documents)
-5. [Galerie de Documents](#galerie-de-documents)
-6. [Fonctionnalités Avancées](#fonctionnalités-avancées)
-7. [FAQ](#faq)
+2. [Connexion & Authentification](#connexion--authentification)
+3. [Page d'Accueil](#page-daccueil)
+4. [Gestion des Projets](#gestion-des-projets)
+5. [Upload de Documents](#upload-de-documents)
+6. [Galerie de Documents](#galerie-de-documents)
+7. [OCR & Transcription](#ocr--transcription)
+8. [Extraction d'Entités](#extraction-dentités)
+9. [Graphe de Connaissances](#graphe-de-connaissances)
+10. [Génération d'Histoires](#génération-dhistoires)
+11. [Gestion des Membres](#gestion-des-membres)
+12. [Recherche Sémantique](#recherche-sémantique)
+13. [Export HTML](#export-html)
+14. [PWA & Mode Hors-ligne](#pwa--mode-hors-ligne)
+15. [Multilingue (i18n)](#multilingue-i18n)
+16. [Administration](#administration)
+17. [FAQ](#faq)
 
 ---
 
@@ -26,10 +36,39 @@ Bienvenue dans Archivia, votre plateforme de préservation et valorisation du pa
 
 ### Premier Projet
 
-1. Cliquez sur **"Nouveau Projet"** dans la navigation
-2. Remplissez le nom de votre projet
-3. Sélectionnez les fonctionnalités souhaitées
-4. Cliquez sur **"Créer le projet"**
+1. Connectez-vous avec vos identifiants
+2. Cliquez sur **"Nouveau Projet"** dans la navigation
+3. Remplissez le nom de votre projet
+4. Sélectionnez les fonctionnalités souhaitées
+5. Cliquez sur **"Créer le projet"**
+
+---
+
+## Connexion & Authentification
+
+### Se connecter
+
+1. Cliquez sur **"Connexion"** dans la navigation
+2. Entrez votre email et mot de passe
+3. Cliquez sur **"Se connecter"**
+
+### Compte par défaut
+
+Après installation avec seed :
+- **Email** : admin@archivia.fr
+- **Mot de passe** : admin123
+- **Rôle** : Administrateur
+
+### Rôles Utilisateurs
+
+| Rôle | Permissions |
+|------|------------|
+| **Admin** | Accès complet, analytics, création utilisateurs |
+| **User** | Création projets, gestion documents |
+
+### Déconnexion
+
+Cliquez sur **"Déconnexion"** dans la navigation pour vous déconnecter en toute sécurité.
 
 ---
 
@@ -40,9 +79,13 @@ La page d'accueil présente Archivia et ses fonctionnalités principales.
 ### Navigation
 
 - **Logo Archivia** : Retour à l'accueil
+- **Barre de recherche** : Recherche rapide documents/entités
 - **Accueil** : Page de présentation
 - **Projets** : Liste de vos projets
+- **Admin** (si admin) : Accès au dashboard d'administration
 - **Nouveau Projet** : Créer un nouveau projet
+- **Connexion/Déconnexion** : Gestion de session
+- **Sélecteur de langue** : FR/EN
 
 ### Sections
 
@@ -204,26 +247,36 @@ Les documents s'affichent en grille avec :
 
 ### Actions sur les Documents
 
-*(Fonctionnalités à venir)*
+Au survol d'un document, des boutons apparaissent :
 
-- Cliquer pour agrandir
-- Modifier les métadonnées
-- Ajouter des annotations
-- Lancer la transcription OCR
-- Créer des points d'intérêt
+- **Icône bleue** (coin supérieur gauche) : Lancer l'OCR
+- **Icône verte** (coin inférieur gauche) : Extraire les entités (si OCR terminé)
+- **Icône rouge** (coin supérieur droit) : Supprimer le document
 
 ---
 
-## Fonctionnalités Avancées
+## OCR & Transcription
 
-### OCR et Transcription
+L'OCR utilise l'API Vision de Claude pour transcrire vos documents.
 
-L'OCR (Optical Character Recognition) permet de :
+### Lancer l'OCR
 
-1. Reconnaître le texte manuscrit ou imprimé
-2. Générer une transcription éditable
-3. Vérifier et corriger les erreurs
-4. Améliorer la recherche dans vos archives
+1. Survolez un document avec le statut **pending**
+2. Cliquez sur l'**icône bleue** (document)
+3. Attendez le traitement (quelques secondes)
+4. Une alerte confirme le nombre de caractères extraits
+
+### Prérequis
+
+- **ANTHROPIC_API_KEY** configurée dans .env.local
+- Document de type image (JPG, PNG, etc.)
+- Statut de transcription = pending
+
+### Résultats
+
+- Le texte transcrit est stocké dans la base de données
+- Le statut passe à **completed**
+- Le contenu est disponible pour la recherche et l'extraction d'entités
 
 **Statuts de transcription :**
 - 🔘 **Pending** : Pas encore lancé
@@ -231,36 +284,289 @@ L'OCR (Optical Character Recognition) permet de :
 - ✅ **Completed** : Transcription automatique terminée
 - ✔️ **Verified** : Relecture humaine effectuée
 
-### Ontologie Progressive
+---
 
-Le système construit automatiquement :
+## Extraction d'Entités
 
-- **Personnes** mentionnées dans les documents
-- **Lieux** géographiques référencés
-- **Événements** historiques
-- **Concepts** et thèmes récurrents
-- **Relations** entre ces entités
+Après l'OCR, extrayez automatiquement les entités du texte.
 
-Cela permet une recherche sémantique avancée et la découverte de connexions cachées.
+### Lancer l'extraction
 
-### Récits Narratifs
+1. Document avec statut **completed** (OCR terminé)
+2. Survolez le document
+3. Cliquez sur l'**icône verte** (tag)
+4. Attendez l'analyse IA (10-30 secondes)
+5. Alerte avec le nombre d'entités et relations trouvées
 
-Créez des parcours guidés :
+### Types d'entités détectées
 
-1. Sélectionnez des documents clés
-2. Définissez un ordre de présentation
-3. Ajoutez des transitions et points de focus
-4. Rédigez des questions pour guider la réflexion
-5. Publiez votre récit
+| Type | Description | Exemples |
+|------|-------------|----------|
+| **Person** | Personnes mentionnées | Jean Dupont, Général Leclerc |
+| **Place** | Lieux géographiques | Paris, Verdun, Maison familiale |
+| **Event** | Événements historiques | Bataille de la Somme, Armistice |
+| **Object** | Objets physiques | Lettre, Médaille, Fusil |
+| **Concept** | Idées abstraites | Courage, Patrie, Espoir |
 
-### Génération IA
+### Relations automatiques
 
-L'intelligence artificielle peut :
+Le système détecte les relations entre entités :
+- *Jean Dupont* **participé_à** *Bataille de la Somme*
+- *Verdun* **lieu_de** *Bataille de Verdun*
+- *Médaille* **appartient_à** *Jean Dupont*
 
-- Résumer automatiquement les documents
-- Générer des questions pédagogiques
-- Suggérer des connexions thématiques
-- Créer des chronologies narratives
+---
+
+## Graphe de Connaissances
+
+Visualisez les connexions entre entités du projet.
+
+### Accéder au graphe
+
+1. Ouvrez la page d'un projet
+2. Cliquez sur **"Voir le graphe"** (bouton violet)
+3. Le graphe interactif s'affiche
+
+### Fonctionnalités
+
+- **Visualisation force-directed** : Les entités se positionnent automatiquement
+- **Codes couleurs** : Chaque type d'entité a une couleur distincte
+  - 🔵 Bleu : Personnes
+  - 🟢 Vert : Lieux
+  - 🟡 Jaune : Événements
+  - 🟠 Orange : Objets
+  - 🟣 Violet : Concepts
+- **Relations** : Lignes connectant les entités liées
+- **Statistiques** : Compteurs par type d'entité
+
+### Interprétation
+
+Le graphe révèle :
+- Les personnages centraux (nombreuses connexions)
+- Les lieux récurrents
+- Les thèmes dominants
+- Les relations cachées entre documents
+
+---
+
+## Génération d'Histoires
+
+Créez automatiquement des récits narratifs à partir de vos données.
+
+### Générer une histoire
+
+1. Ouvrez la page du projet
+2. Cliquez sur **"Générer histoire"** (bouton rose)
+3. Attendez la génération (30-60 secondes)
+4. L'histoire s'affiche avec titre et contenu
+
+### Styles disponibles
+
+| Style | Description |
+|-------|-------------|
+| **Narrative** | Histoire fluide et immersive |
+| **Documentary** | Approche factuelle et chronologique |
+| **Educational** | Format pédagogique avec explications |
+
+### Contenu généré
+
+L'histoire intègre :
+- Les entités extraites (personnes, lieux, événements)
+- Les relations détectées
+- Les transcriptions des documents
+- Le contexte du projet (période, thèmes)
+
+### Personnalisation
+
+Les options de longueur :
+- **Court** : ~200 mots
+- **Moyen** : ~500 mots (par défaut)
+- **Long** : ~1000 mots
+
+---
+
+## Gestion des Membres
+
+Partagez vos projets avec d'autres utilisateurs.
+
+### Voir les membres
+
+En bas de la page projet, la section **"Membres du projet"** liste tous les membres avec leur rôle.
+
+### Ajouter un membre (Owner/Admin uniquement)
+
+1. Cliquez sur **"Ajouter un membre"**
+2. Entrez l'**email** de l'utilisateur
+3. Sélectionnez son **rôle** :
+   - **Lecteur** : Peut voir le projet
+   - **Éditeur** : Peut modifier les documents
+4. Cliquez sur **"Ajouter"**
+
+### Retirer un membre
+
+1. Trouvez le membre dans la liste
+2. Cliquez sur l'**icône poubelle** rouge
+3. Confirmez la suppression
+
+**Note** : Le propriétaire (owner) ne peut pas être retiré.
+
+### Rôles du projet
+
+| Rôle | Permissions |
+|------|-------------|
+| **Owner** | Propriété totale, gestion des membres |
+| **Editor** | Modification des documents |
+| **Viewer** | Lecture seule |
+
+---
+
+## Recherche Sémantique
+
+Trouvez rapidement documents et entités.
+
+### Utiliser la recherche
+
+1. Cliquez sur la **barre de recherche** dans la navigation
+2. Tapez votre requête (minimum 2 caractères)
+3. Les résultats apparaissent en temps réel (délai 300ms)
+
+### Types de résultats
+
+- **Documents** : Badge vert, titre, extrait pertinent
+- **Entités** : Badge violet, type (person, place, etc.)
+
+### Calcul de pertinence
+
+Le système calcule un score basé sur :
+- Correspondance dans le titre : +10 points
+- Correspondance dans le contenu : +5 points
+- Position du terme trouvé
+
+### Navigation
+
+Cliquez sur un résultat pour naviguer vers :
+- La page du projet contenant le document
+- Le détail de l'entité
+
+---
+
+## Export HTML
+
+Créez des sites statiques autonomes de vos projets.
+
+### Exporter un projet
+
+1. Ouvrez la page du projet
+2. Cliquez sur **"Exporter HTML"** (bouton ambre)
+3. Attendez la génération du ZIP
+4. Le téléchargement démarre automatiquement
+
+### Contenu de l'archive
+
+Le fichier ZIP contient :
+- `index.html` : Page d'accueil avec liste des documents
+- `documents/` : Une page HTML par document
+- `images/` : Toutes les images et miniatures
+- Styles CSS intégrés (responsive)
+
+### Utilisation
+
+1. Décompressez l'archive
+2. Ouvrez `index.html` dans un navigateur
+3. Naviguez sans connexion internet
+4. Partagez le dossier ou hébergez-le
+
+### Cas d'usage
+
+- Archives locales permanentes
+- Partage avec des personnes sans accès à l'application
+- Sauvegarde de sécurité
+- Publication sur sites statiques
+
+---
+
+## PWA & Mode Hors-ligne
+
+Archivia est une Progressive Web App installable.
+
+### Installer l'application
+
+Sur Chrome/Edge :
+1. Visitez Archivia
+2. Cliquez sur l'icône "Installer" dans la barre d'adresse
+3. L'application s'installe comme une app native
+
+Sur mobile :
+1. Ouvrez Archivia dans le navigateur
+2. Menu > "Ajouter à l'écran d'accueil"
+
+### Fonctionnalités PWA
+
+- **Icône sur le bureau** : Accès rapide
+- **Mode plein écran** : Interface sans barre de navigateur
+- **Cache intelligent** : Chargement plus rapide
+- **Mode hors-ligne** : Pages déjà visitées disponibles sans internet
+
+### Service Worker
+
+Le service worker met en cache :
+- Les pages visitées
+- Les ressources statiques (CSS, JS, images)
+- Les données API (stratégie network-first)
+
+---
+
+## Multilingue (i18n)
+
+Archivia est disponible en Français et Anglais.
+
+### Changer de langue
+
+1. Cliquez sur le **sélecteur de langue** (FR/EN) dans la navigation
+2. Sélectionnez votre langue
+3. L'interface se met à jour instantanément
+
+### Persistance
+
+Votre choix de langue est :
+- Sauvegardé dans localStorage
+- Restauré automatiquement à chaque visite
+- Appliqué à toute l'interface
+
+### Détection automatique
+
+Au premier chargement, Archivia :
+1. Vérifie localStorage (préférence sauvegardée)
+2. Sinon, détecte la langue du navigateur
+3. Par défaut : Français
+
+---
+
+## Administration
+
+Section réservée aux administrateurs.
+
+### Accéder à l'admin
+
+1. Connectez-vous avec un compte admin
+2. Cliquez sur **"Admin"** dans la navigation
+
+### Dashboard Analytics
+
+Visualisez les statistiques globales :
+
+- **Cartes récapitulatives** : Nombre de projets, documents, entités, relations
+- **Répartition par statut** : Graphiques pour projets et documents
+- **Types d'entités** : Distribution des entités détectées
+- **Statistiques de traitement** : OCR complétés, miniatures générées
+- **Activité récente** : Liste des derniers documents ajoutés
+
+### Paramètres
+
+Configurez l'application :
+- Clés API (Claude/Anthropic)
+- Fournisseur OCR
+- Paramètres système
 
 ---
 
@@ -306,13 +612,22 @@ R : Oui, tous les paramètres sont modifiables à tout moment.
 R : Les documents sont stockés localement sur votre serveur. Configurez un projet en "Privé" pour restreindre l'accès.
 
 **Q : Quels formats de sortie sont disponibles ?**
-R : Actuellement, les données sont accessibles via l'interface web. L'export HTML statique sera disponible prochainement.
+R : Vous pouvez exporter vos projets en HTML statique (ZIP téléchargeable). Les données sont également accessibles via l'API REST.
 
 **Q : L'OCR fonctionne-t-il sur les manuscrits anciens ?**
-R : Oui, grâce à des modèles spécialisés. La qualité dépend de la lisibilité du document original.
+R : Oui, l'API Vision de Claude est très performante sur les manuscrits. La qualité dépend de la lisibilité et de la résolution du scan.
 
 **Q : Puis-je collaborer avec d'autres utilisateurs ?**
-R : La fonctionnalité de collaboration est prévue dans les prochaines versions.
+R : Oui ! Ajoutez des membres à vos projets avec différents rôles (lecteur, éditeur). Seuls les propriétaires et admins peuvent gérer les membres.
+
+**Q : Comment fonctionne la génération d'histoires ?**
+R : L'IA Claude analyse les entités, relations et transcriptions du projet pour créer un récit cohérent. Vous pouvez choisir le style et la longueur.
+
+**Q : L'application fonctionne-t-elle hors-ligne ?**
+R : Partiellement. En tant que PWA, les pages déjà visitées sont mises en cache et accessibles hors-ligne. Les nouvelles opérations nécessitent une connexion.
+
+**Q : Comment changer la langue ?**
+R : Utilisez le sélecteur FR/EN dans la navigation. Votre choix est sauvegardé automatiquement.
 
 ---
 
@@ -335,39 +650,40 @@ Incluez dans votre rapport :
 
 ---
 
-## Mises à Jour à Venir
+## Mises à Jour & Changelog
 
-### Version 0.2 (Prochaine)
+### Version 1.0 (Actuelle)
+
+- [x] **Authentification** : NextAuth avec rôles admin/user
+- [x] **Suppression de documents** : Nettoyage complet fichiers + miniatures
+- [x] **OCR Vision API** : Transcription avec Claude API
+- [x] **Extraction d'entités** : Détection automatique personnes, lieux, événements
+- [x] **Graphe de connaissances** : Visualisation force-directed interactive
+- [x] **Suite de tests** : 20+ tests automatisés Vitest
+- [x] **Export HTML statique** : Génération de sites autonomes (ZIP)
+- [x] **Recherche sémantique** : Full-text dans documents et entités
+- [x] **PWA** : Installation mobile, cache hors-ligne
+- [x] **Internationalisation** : Support FR/EN avec persistance
+- [x] **Génération d'histoires** : Récits narratifs IA (3 styles)
+- [x] **Multi-utilisateurs** : Permissions owner/editor/viewer par projet
+- [x] **Dashboard Analytics** : Statistiques et métriques admin
+
+### Fonctionnalités à venir
 
 - [ ] Visualiseur de documents en plein écran
-- [ ] Édition des métadonnées inline
-- [ ] Suppression de documents
-- [ ] Filtres avancés dans la galerie
-
-### Version 0.3
-
-- [ ] Intégration OCR avec Tesseract/Claude
+- [ ] Édition des transcriptions inline
 - [ ] Annotations sur les images
 - [ ] Points d'intérêt interactifs
-- [ ] Vérification collaborative
-
-### Version 0.4
-
-- [ ] Ontologie automatique
-- [ ] Recherche sémantique
-- [ ] Graphe de connaissances
-- [ ] Export des données
-
-### Version 1.0
-
-- [ ] Génération de récits IA
-- [ ] Export HTML statique
-- [ ] PWA (Progressive Web App)
-- [ ] Multi-utilisateurs et permissions
+- [ ] Frise chronologique interactive
+- [ ] Carte géographique des lieux
+- [ ] Export PDF des histoires générées
+- [ ] API publique avec documentation Swagger
+- [ ] Gestion des utilisateurs admin
+- [ ] Notifications et activité en temps réel
 
 ---
 
 *Merci d'utiliser Archivia pour préserver et valoriser votre patrimoine culturel !*
 
-**Version** : 0.1.0
+**Version** : 1.0.0
 **Dernière mise à jour** : Novembre 2025
