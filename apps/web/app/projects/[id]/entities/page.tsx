@@ -1,353 +1,238 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
+import dynamic from "next/dynamic";
 
-interface Node {
+// Dynamically import KnowledgeGraph to avoid SSR issues with D3
+const KnowledgeGraph = dynamic(
+  () => import("@/components/graph/KnowledgeGraph"),
+  { ssr: false }
+);
+
+interface GraphNode {
   id: string;
   name: string;
-  type: "person" | "place" | "event" | "object" | "concept";
-  description?: string;
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
+  type: 'person' | 'place' | 'event' | 'object' | 'concept';
+  aliases?: string[];
+  description?: string | null;
+  properties?: Record<string, unknown>;
 }
 
-interface Edge {
+interface GraphEdge {
   id: string;
   source: string;
   target: string;
   relationType: string;
+  weight?: number | null;
+  properties?: Record<string, unknown>;
 }
 
-interface Stats {
-  totalEntities: number;
-  byType: {
-    person: number;
-    place: number;
-    event: number;
-    object: number;
-    concept: number;
+interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  stats: {
+    totalEntities: number;
+    byType: {
+      person: number;
+      place: number;
+      event: number;
+      object: number;
+      concept: number;
+    };
+    totalRelationships: number;
   };
-  totalRelationships: number;
 }
 
-const typeColors: Record<string, string> = {
-  person: "#3B82F6", // blue
-  place: "#10B981", // green
-  event: "#F59E0B", // amber
-  object: "#8B5CF6", // purple
-  concept: "#EC4899", // pink
-};
+interface Project {
+  id: string;
+  name: string;
+  description?: string | null;
+}
 
-const typeLabels: Record<string, string> = {
-  person: "Personne",
-  place: "Lieu",
-  event: "Événement",
-  object: "Objet",
-  concept: "Concept",
-};
-
-export default function EntitiesGraphPage() {
+export default function EntitiesPage() {
   const params = useParams();
   const projectId = params.id as string;
 
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-
-  const svgRef = useRef<SVGSVGElement>(null);
-  const [dimensions] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
-    async function fetchEntities() {
+    async function fetchData() {
       try {
-        const response = await fetch(`/api/projects/${projectId}/entities`);
-        const data = await response.json();
+        setLoading(true);
 
-        if (data.success && data.data) {
-          // Initialize node positions
-          const initializedNodes = data.data.nodes.map((node: Node, i: number) => ({
-            ...node,
-            x: dimensions.width / 2 + Math.cos((i * 2 * Math.PI) / data.data.nodes.length) * 200,
-            y: dimensions.height / 2 + Math.sin((i * 2 * Math.PI) / data.data.nodes.length) * 200,
-            vx: 0,
-            vy: 0,
-          }));
-          setNodes(initializedNodes);
-          setEdges(data.data.edges);
-          setStats(data.data.stats);
+        // Fetch project info
+        const projectRes = await fetch(`/api/projects/${projectId}`);
+        const projectData = await projectRes.json();
+        if (projectData.success) {
+          setProject(projectData.data);
+        }
+
+        // Fetch graph data
+        const graphRes = await fetch(`/api/projects/${projectId}/entities`);
+        const data = await graphRes.json();
+
+        if (data.success) {
+          setGraphData(data.data);
         } else {
-          setError(data.error || "Failed to load entities");
+          throw new Error(data.error || "Failed to load graph data");
         }
       } catch (err) {
-        console.error("Failed to fetch entities:", err);
-        setError("Network error");
+        console.error("Failed to fetch data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
       }
     }
 
-    fetchEntities();
-  }, [projectId, dimensions.width, dimensions.height]);
-
-  // Simple force simulation
-  useEffect(() => {
-    if (nodes.length === 0) return;
-
-    const simulation = setInterval(() => {
-      setNodes((currentNodes) => {
-        const newNodes = currentNodes.map((node) => ({ ...node }));
-
-        // Apply forces
-        for (let i = 0; i < newNodes.length; i++) {
-          let fx = 0;
-          let fy = 0;
-
-          // Repulsion between nodes
-          for (let j = 0; j < newNodes.length; j++) {
-            if (i !== j) {
-              const dx = newNodes[i].x! - newNodes[j].x!;
-              const dy = newNodes[i].y! - newNodes[j].y!;
-              const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-              const force = 1000 / (dist * dist);
-              fx += (dx / dist) * force;
-              fy += (dy / dist) * force;
-            }
-          }
-
-          // Attraction along edges
-          edges.forEach((edge) => {
-            if (edge.source === newNodes[i].id || edge.target === newNodes[i].id) {
-              const otherId = edge.source === newNodes[i].id ? edge.target : edge.source;
-              const other = newNodes.find((n) => n.id === otherId);
-              if (other) {
-                const dx = other.x! - newNodes[i].x!;
-                const dy = other.y! - newNodes[i].y!;
-                fx += dx * 0.01;
-                fy += dy * 0.01;
-              }
-            }
-          });
-
-          // Center gravity
-          fx += (dimensions.width / 2 - newNodes[i].x!) * 0.001;
-          fy += (dimensions.height / 2 - newNodes[i].y!) * 0.001;
-
-          // Update velocity with damping
-          newNodes[i].vx = (newNodes[i].vx! + fx) * 0.9;
-          newNodes[i].vy = (newNodes[i].vy! + fy) * 0.9;
-
-          // Update position
-          newNodes[i].x = newNodes[i].x! + newNodes[i].vx!;
-          newNodes[i].y = newNodes[i].y! + newNodes[i].vy!;
-
-          // Keep within bounds
-          newNodes[i].x = Math.max(50, Math.min(dimensions.width - 50, newNodes[i].x!));
-          newNodes[i].y = Math.max(50, Math.min(dimensions.height - 50, newNodes[i].y!));
-        }
-
-        return newNodes;
-      });
-    }, 50);
-
-    // Stop after 3 seconds
-    const timeout = setTimeout(() => clearInterval(simulation), 3000);
-
-    return () => {
-      clearInterval(simulation);
-      clearTimeout(timeout);
-    };
-  }, [nodes.length, edges, dimensions.width, dimensions.height]);
+    fetchData();
+  }, [projectId]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-heritage-600"></div>
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-heritage-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement du graphe...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !graphData) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
+          {error || "Failed to load graph"}
         </div>
+        <Link
+          href={`/projects/${projectId}`}
+          className="text-heritage-600 hover:text-heritage-700 mt-4 inline-block"
+        >
+          &larr; Retour au projet
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Link
-        href={`/projects/${projectId}`}
-        className="text-heritage-600 hover:text-heritage-700 mb-4 inline-block"
-      >
-        &larr; Retour au projet
-      </Link>
-
-      <h1 className="text-3xl font-bold text-heritage-900 mb-2">
-        Graphe d&apos;entités
-      </h1>
-      <p className="text-heritage-600 mb-6">
-        Visualisation des entités et leurs relations
-      </p>
-
-      {stats && (
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <div>
-              <div className="text-2xl font-bold text-heritage-900">
-                {stats.totalEntities}
-              </div>
-              <div className="text-sm text-heritage-600">Total entités</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-heritage-900">
-                {stats.totalRelationships}
-              </div>
-              <div className="text-sm text-heritage-600">Relations</div>
-            </div>
-            {Object.entries(stats.byType).map(([type, count]) => (
-              <div key={type}>
-                <div
-                  className="text-2xl font-bold"
-                  style={{ color: typeColors[type] }}
-                >
-                  {count}
-                </div>
-                <div className="text-sm text-heritage-600">
-                  {typeLabels[type]}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white rounded-lg shadow-sm p-4">
-        <div className="flex flex-wrap gap-4 mb-4">
-          {Object.entries(typeLabels).map(([type, label]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: typeColors[type] }}
-              />
-              <span className="text-sm text-heritage-700">{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {nodes.length === 0 ? (
-          <div className="text-center py-16 text-heritage-600">
-            Aucune entité trouvée. Lancez l&apos;extraction d&apos;entités sur vos
-            documents.
-          </div>
-        ) : (
-          <svg
-            ref={svgRef}
-            width={dimensions.width}
-            height={dimensions.height}
-            className="border border-heritage-200 rounded-lg bg-heritage-50"
-          >
-            {/* Edges */}
-            {edges.map((edge) => {
-              const source = nodes.find((n) => n.id === edge.source);
-              const target = nodes.find((n) => n.id === edge.target);
-              if (!source || !target) return null;
-
-              return (
-                <g key={edge.id}>
-                  <line
-                    x1={source.x}
-                    y1={source.y}
-                    x2={target.x}
-                    y2={target.y}
-                    stroke="#CBD5E1"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={(source.x! + target.x!) / 2}
-                    y={(source.y! + target.y!) / 2}
-                    fontSize="10"
-                    fill="#94A3B8"
-                    textAnchor="middle"
-                  >
-                    {edge.relationType}
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Nodes */}
-            {nodes.map((node) => (
-              <g
-                key={node.id}
-                transform={`translate(${node.x}, ${node.y})`}
-                className="cursor-pointer"
-                onClick={() => setSelectedNode(node)}
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href={`/projects/${projectId}`}
+                className="text-heritage-600 hover:text-heritage-700 inline-flex items-center gap-2"
               >
-                <circle
-                  r="20"
-                  fill={typeColors[node.type]}
-                  stroke={selectedNode?.id === node.id ? "#000" : "white"}
-                  strokeWidth="2"
-                />
-                <text
-                  dy=".35em"
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="white"
-                  fontWeight="bold"
-                >
-                  {node.name.substring(0, 2).toUpperCase()}
-                </text>
-                <text
-                  dy="35"
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill="#374151"
-                >
-                  {node.name.length > 15
-                    ? node.name.substring(0, 15) + "..."
-                    : node.name}
-                </text>
-              </g>
-            ))}
-          </svg>
-        )}
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Retour au projet
+              </Link>
+              <span className="text-gray-300">|</span>
+              <h1 className="text-xl font-semibold text-heritage-900">
+                Graphe de connaissances
+              </h1>
+              {project && (
+                <span className="text-gray-600">· {project.name}</span>
+              )}
+            </div>
 
-        {selectedNode && (
-          <div className="mt-4 p-4 bg-heritage-50 rounded-lg">
-            <h3 className="font-semibold text-heritage-900 mb-2">
-              {selectedNode.name}
-            </h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-heritage-600">Type:</span>{" "}
-                <span
-                  className="font-medium"
-                  style={{ color: typeColors[selectedNode.type] }}
-                >
-                  {typeLabels[selectedNode.type]}
-                </span>
+            <div className="flex items-center gap-4">
+              {/* Stats */}
+              <div className="flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-heritage-600">
+                    {graphData.stats.totalEntities}
+                  </div>
+                  <div className="text-xs text-gray-600">Entités</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-heritage-600">
+                    {graphData.stats.totalRelationships}
+                  </div>
+                  <div className="text-xs text-gray-600">Relations</div>
+                </div>
               </div>
-              {selectedNode.description && (
-                <div className="col-span-2">
-                  <span className="text-heritage-600">Description:</span>{" "}
-                  <span className="text-heritage-900">
-                    {selectedNode.description}
-                  </span>
+
+              {/* Navigation */}
+              <Link
+                href={`/projects/${projectId}/gallery`}
+                className="px-4 py-2 bg-heritage-100 hover:bg-heritage-200 text-heritage-800 rounded-lg text-sm font-medium transition"
+              >
+                Galerie
+              </Link>
+            </div>
+          </div>
+
+          {/* Type breakdown */}
+          {graphData.stats.totalEntities > 0 && (
+            <div className="flex gap-4 mt-4 text-xs">
+              {graphData.stats.byType.person > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#8B4513]"></span>
+                  <span className="text-gray-600">{graphData.stats.byType.person} personnes</span>
+                </div>
+              )}
+              {graphData.stats.byType.place > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#4A7C59]"></span>
+                  <span className="text-gray-600">{graphData.stats.byType.place} lieux</span>
+                </div>
+              )}
+              {graphData.stats.byType.event > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#D4AF37]"></span>
+                  <span className="text-gray-600">{graphData.stats.byType.event} événements</span>
+                </div>
+              )}
+              {graphData.stats.byType.object > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#6B7280]"></span>
+                  <span className="text-gray-600">{graphData.stats.byType.object} objets</span>
+                </div>
+              )}
+              {graphData.stats.byType.concept > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#8B5A8B]"></span>
+                  <span className="text-gray-600">{graphData.stats.byType.concept} concepts</span>
                 </div>
               )}
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Graph Container */}
+      <div className="flex-1 overflow-hidden p-4">
+        {graphData.nodes.length === 0 ? (
+          <div className="h-full flex items-center justify-center bg-white rounded-lg shadow-lg">
+            <div className="text-center">
+              <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                Aucune entité
+              </h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Extrayez des entités depuis vos documents pour visualiser le graphe de connaissances
+              </p>
+              <Link
+                href={`/projects/${projectId}`}
+                className="inline-block bg-heritage-600 hover:bg-heritage-700 text-white px-6 py-3 rounded-lg font-medium transition"
+              >
+                Voir les documents
+              </Link>
+            </div>
           </div>
+        ) : (
+          <KnowledgeGraph data={{ nodes: graphData.nodes, edges: graphData.edges }} />
         )}
       </div>
     </div>
