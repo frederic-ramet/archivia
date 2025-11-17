@@ -47,3 +47,5 @@ public/uploads/
 
 # TypeScript
 *.tsbuildinfo
+_IMPLEMENTATION/opale/
+_IMPLEMENTATION/journal_de_guerre/

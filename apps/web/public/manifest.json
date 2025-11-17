@@ -4,8 +4,8 @@
   "description": "Plateforme de numérisation, analyse et valorisation du patrimoine culturel",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f9fafb",
-  "theme_color": "#7c3aed",
+  "background_color": "#FDF8F3",
+  "theme_color": "#A67B5B",
   "orientation": "any",
   "icons": [
     {
