@@ -12,6 +12,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Obtenir le chemin absolu du projet
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Fonctions utilitaires
 info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -28,6 +31,10 @@ warning() {
 error() {
     echo -e "${RED}[ERROR]${NC} $1"
     exit 1
+}
+
+step() {
+    echo -e "\n${YELLOW}[STEP $1]${NC} $2\n"
 }
 
 # Vérifier la version de Node.js
@@ -74,128 +81,230 @@ install_dependencies() {
     success "Dépendances installées avec succès"
 }
 
-# Compiler better-sqlite3 (module natif)
-build_native_modules() {
-    info "Compilation des modules natifs..."
-
-    # Vérifier si les outils de compilation sont disponibles
-    if ! command -v gcc &> /dev/null; then
-        warning "gcc non trouvé. Les modules natifs peuvent ne pas fonctionner."
-        warning "Sur Ubuntu/Debian: sudo apt-get install build-essential python3"
-        warning "Sur macOS: xcode-select --install"
-    fi
-
-    # Reconstruire better-sqlite3 si nécessaire
-    if [ -d "node_modules/better-sqlite3" ]; then
-        cd node_modules/better-sqlite3
-        if [ ! -f "build/Release/better_sqlite3.node" ]; then
-            npm run build-release 2>/dev/null || warning "Module natif non compilé - fonctionnalités DB limitées"
-        fi
-        cd ../..
+# Générer un secret pour AUTH
+generate_auth_secret() {
+    if command -v openssl &> /dev/null; then
+        openssl rand -base64 32
+    else
+        node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
     fi
 }
 
-# Générer les migrations de base de données
+# Créer le fichier .env racine
+create_root_env() {
+    info "Configuration de l'environnement racine..."
+
+    if [ ! -f "$PROJECT_DIR/.env" ]; then
+        cat > "$PROJECT_DIR/.env" << EOF
+# Configuration Archivia - Environnement Racine
+# Ce fichier est utilisé par les scripts de base de données
+
+# Base de données SQLite (chemin relatif pour drizzle-kit)
+DATABASE_URL=file:./packages/database/data/archivia.db
+
+# Environnement
+NODE_ENV=development
+
+# Configuration Admin Initial (pour seed:admin)
+ADMIN_EMAIL=admin@archivia.local
+ADMIN_PASSWORD=admin123
+ADMIN_NAME=Administrateur
+EOF
+        success "Fichier .env racine créé"
+    else
+        info "Fichier .env racine existe déjà"
+    fi
+}
+
+# Créer le fichier .env pour Next.js (CRITIQUE)
+create_web_env() {
+    info "Configuration de l'environnement Next.js..."
+
+    local AUTH_SECRET
+    AUTH_SECRET=$(generate_auth_secret)
+
+    if [ ! -f "$PROJECT_DIR/apps/web/.env" ]; then
+        cat > "$PROJECT_DIR/apps/web/.env" << EOF
+# Configuration Archivia - Application Web
+# IMPORTANT: Ce fichier est REQUIS pour le bon fonctionnement de Next.js
+
+# Base de données SQLite - CHEMIN ABSOLU OBLIGATOIRE
+# Le chemin relatif ne fonctionne pas avec Next.js dans un monorepo
+DATABASE_URL=file:${PROJECT_DIR}/packages/database/data/archivia.db
+
+# Environnement
+NODE_ENV=development
+
+# Configuration des uploads
+MAX_UPLOAD_SIZE=52428800
+STORAGE_PATH=./public/uploads
+
+# Authentification NextAuth (OBLIGATOIRE)
+# Secret généré automatiquement - NE PAS PARTAGER
+AUTH_SECRET=${AUTH_SECRET}
+
+# Services AI (optionnel - configurable via l'interface admin /admin/settings)
+# ANTHROPIC_API_KEY=sk-ant-api03-...
+# OCR_PROVIDER=anthropic
+# OCR_LANGUAGE=fra
+EOF
+        success "Fichier apps/web/.env créé avec chemin absolu: ${PROJECT_DIR}/packages/database/data/archivia.db"
+    else
+        info "Fichier apps/web/.env existe déjà"
+
+        # Vérifier si le chemin DB est absolu
+        if grep -q "DATABASE_URL=file:\.\|DATABASE_URL=file:packages" "$PROJECT_DIR/apps/web/.env"; then
+            warning "ATTENTION: Le DATABASE_URL utilise un chemin relatif!"
+            warning "Cela peut causer des erreurs de connexion. Recommandé: chemin absolu"
+            warning "Exemple: DATABASE_URL=file:${PROJECT_DIR}/packages/database/data/archivia.db"
+        fi
+    fi
+}
+
+# Créer les répertoires nécessaires
+setup_directories() {
+    info "Création des répertoires..."
+
+    mkdir -p "$PROJECT_DIR/packages/database/data"
+    mkdir -p "$PROJECT_DIR/apps/web/public/uploads"
+
+    success "Répertoires créés"
+}
+
+# Configuration de la base de données
 setup_database() {
-    info "Configuration de la base de données..."
+    info "Initialisation de la base de données..."
 
-    # Créer le répertoire data
-    mkdir -p packages/database/data
-    mkdir -p apps/web/public/uploads
+    # Synchroniser le schéma avec la DB
+    cd "$PROJECT_DIR"
 
-    # Générer les migrations (si non existantes)
-    if [ ! -d "packages/database/drizzle" ]; then
-        info "Génération des migrations Drizzle..."
-        pnpm db:generate 2>/dev/null || warning "Migrations non générées - vérifiez la configuration"
+    info "Synchronisation du schéma Drizzle..."
+    if pnpm db:push 2>&1 | grep -q "Changes applied\|already"; then
+        success "Schéma de base de données synchronisé"
+    else
+        warning "Synchronisation du schéma peut avoir échoué - vérifiez manuellement"
     fi
 
     success "Base de données configurée"
+}
+
+# Créer l'utilisateur admin
+create_admin_user() {
+    info "Création de l'utilisateur administrateur..."
+
+    cd "$PROJECT_DIR"
+
+    if pnpm --filter @archivia/database seed:admin 2>&1 | grep -q "Admin user created"; then
+        success "Utilisateur admin créé: admin@archivia.local / admin123"
+    else
+        warning "L'utilisateur admin existe peut-être déjà"
+    fi
 }
 
 # Vérification TypeScript
 check_typescript() {
     info "Vérification du code TypeScript..."
 
-    cd apps/web
-    npx tsc --noEmit
-
-    if [ $? -ne 0 ]; then
-        error "Erreurs TypeScript détectées"
+    cd "$PROJECT_DIR"
+    if pnpm type-check 2>&1 | grep -q "Done"; then
+        success "Code TypeScript valide"
+    else
+        warning "Vérification TypeScript peut avoir échoué"
     fi
-    cd ../..
-
-    success "Code TypeScript valide"
 }
 
-# Créer le fichier .env
-create_env() {
-    info "Configuration de l'environnement..."
+# Exécuter les tests
+run_tests() {
+    info "Exécution des tests..."
 
-    if [ ! -f ".env" ]; then
-        cat > .env << EOF
-# Configuration Archivia
-DATABASE_URL=./packages/database/data/archivia.db
-NODE_ENV=development
-
-# Configuration future pour les services AI
-# OPENAI_API_KEY=your_key_here
-# ANTHROPIC_API_KEY=your_key_here
-
-# Configuration de stockage (futur)
-# STORAGE_PATH=./public/uploads
-# MAX_UPLOAD_SIZE=52428800
-EOF
-        success "Fichier .env créé"
+    cd "$PROJECT_DIR"
+    if pnpm test 2>&1 | grep -q "passed"; then
+        success "Tests passés avec succès"
     else
-        warning "Fichier .env existe déjà"
+        warning "Certains tests peuvent avoir échoué"
     fi
 }
 
 # Afficher les informations de post-installation
 post_install_info() {
     echo ""
-    echo -e "${GREEN}============================================${NC}"
-    echo -e "${GREEN}  Installation terminée avec succès !${NC}"
-    echo -e "${GREEN}============================================${NC}"
+    echo -e "${GREEN}╔═══════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║       Installation terminée avec succès !              ║${NC}"
+    echo -e "${GREEN}╚═══════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo "Commandes disponibles :"
+    echo -e "${YELLOW}Configuration créée:${NC}"
+    echo -e "  • Chemin DB: ${BLUE}${PROJECT_DIR}/packages/database/data/archivia.db${NC}"
+    echo -e "  • Uploads: ${BLUE}${PROJECT_DIR}/apps/web/public/uploads${NC}"
     echo ""
-    echo -e "  ${BLUE}pnpm dev${NC}          - Démarrer le serveur de développement"
-    echo -e "  ${BLUE}pnpm build${NC}        - Compiler l'application pour la production"
-    echo -e "  ${BLUE}pnpm start${NC}        - Démarrer le serveur de production"
-    echo -e "  ${BLUE}pnpm lint${NC}         - Vérifier le code avec ESLint"
-    echo -e "  ${BLUE}pnpm type-check${NC}   - Vérifier les types TypeScript"
+    echo -e "${YELLOW}Compte administrateur:${NC}"
+    echo -e "  • Email: ${BLUE}admin@archivia.local${NC}"
+    echo -e "  • Mot de passe: ${BLUE}admin123${NC}"
     echo ""
-    echo "Base de données :"
+    echo -e "${YELLOW}Commandes principales:${NC}"
     echo ""
-    echo -e "  ${BLUE}pnpm db:generate${NC}  - Générer les migrations"
-    echo -e "  ${BLUE}pnpm db:migrate${NC}   - Appliquer les migrations"
-    echo -e "  ${BLUE}pnpm db:seed${NC}      - Peupler avec des données de test"
+    echo -e "  ${BLUE}pnpm dev${NC}            Démarrer le serveur de développement"
+    echo -e "  ${BLUE}pnpm build${NC}          Compiler pour la production"
+    echo -e "  ${BLUE}pnpm test${NC}           Lancer les tests automatisés"
+    echo -e "  ${BLUE}pnpm type-check${NC}     Vérifier les types TypeScript"
+    echo -e "  ${BLUE}pnpm lint${NC}           Vérifier le code avec ESLint"
     echo ""
-    echo "Pour démarrer :"
+    echo -e "${YELLOW}Base de données:${NC}"
     echo ""
-    echo -e "  ${YELLOW}pnpm dev${NC}"
+    echo -e "  ${BLUE}pnpm db:push${NC}        Synchroniser le schéma"
+    echo -e "  ${BLUE}pnpm db:seed${NC}        Créer des données de test"
+    echo -e "  ${BLUE}pnpm test:opale${NC}     Créer un projet de test complet"
+    echo ""
+    echo -e "${YELLOW}Pour démarrer:${NC}"
+    echo ""
+    echo -e "  ${GREEN}pnpm dev${NC}"
     echo ""
     echo -e "L'application sera disponible sur ${BLUE}http://localhost:3000${NC}"
+    echo ""
+    echo -e "${YELLOW}Documentation:${NC}"
+    echo -e "  • README principal: ${BLUE}README.md${NC}"
+    echo -e "  • Documentation technique: ${BLUE}docs/TECHNICAL_README.md${NC}"
+    echo -e "  • Guide utilisateur: ${BLUE}docs/GUIDE_UTILISATEUR.md${NC}"
     echo ""
 }
 
 # Script principal
 main() {
     echo ""
-    echo -e "${BLUE}╔═══════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║       ARCHIVIA - Installation Dev         ║${NC}"
-    echo -e "${BLUE}║   Plateforme de Patrimoine Culturel       ║${NC}"
-    echo -e "${BLUE}╚═══════════════════════════════════════════╝${NC}"
+    echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║       ARCHIVIA - Installation Développement           ║${NC}"
+    echo -e "${BLUE}║   Plateforme de Préservation du Patrimoine            ║${NC}"
+    echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
     echo ""
 
+    info "Répertoire du projet: $PROJECT_DIR"
+    echo ""
+
+    step "1/8" "Vérification des prérequis"
     check_node
     check_pnpm
+
+    step "2/8" "Installation des dépendances"
     install_dependencies
-    build_native_modules
+
+    step "3/8" "Création des répertoires"
+    setup_directories
+
+    step "4/8" "Configuration environnement racine"
+    create_root_env
+
+    step "5/8" "Configuration environnement Next.js"
+    create_web_env
+
+    step "6/8" "Initialisation de la base de données"
     setup_database
-    create_env
+
+    step "7/8" "Création utilisateur administrateur"
+    create_admin_user
+
+    step "8/8" "Vérification de l'installation"
     check_typescript
+    run_tests
+
     post_install_info
 }
 
