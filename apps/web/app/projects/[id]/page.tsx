@@ -343,12 +343,20 @@ export default function ProjectDetailPage() {
 
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-heritage-900">Documents</h2>
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-heritage-600 hover:bg-heritage-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          Ajouter des documents
-        </button>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/projects/${projectId}/entities`}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Voir le graphe
+          </Link>
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-heritage-600 hover:bg-heritage-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Ajouter des documents
+          </button>
+        </div>
       </div>
 
       {loadingDocs && (
