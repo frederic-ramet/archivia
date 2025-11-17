@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { UploadModal } from "@/components/upload-modal";
 
 interface Project {
   id: string;
@@ -70,6 +71,25 @@ export default function ProjectDetailPage() {
   const [loadingProject, setLoadingProject] = useState(true);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  const fetchDocuments = async () => {
+    try {
+      setLoadingDocs(true);
+      const response = await fetch(
+        `/api/documents?projectId=${projectId}&limit=50`
+      );
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setDocuments(data.data.items);
+      }
+    } catch (err) {
+      console.error("Failed to fetch documents:", err);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchProject() {
@@ -87,23 +107,6 @@ export default function ProjectDetailPage() {
         console.error(err);
       } finally {
         setLoadingProject(false);
-      }
-    }
-
-    async function fetchDocuments() {
-      try {
-        const response = await fetch(
-          `/api/documents?projectId=${projectId}&limit=50`
-        );
-        const data = await response.json();
-
-        if (data.success && data.data) {
-          setDocuments(data.data.items);
-        }
-      } catch (err) {
-        console.error("Failed to fetch documents:", err);
-      } finally {
-        setLoadingDocs(false);
       }
     }
 
@@ -259,7 +262,10 @@ export default function ProjectDetailPage() {
 
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-heritage-900">Documents</h2>
-        <button className="bg-heritage-600 hover:bg-heritage-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button
+          onClick={() => setShowUploadModal(true)}
+          className="bg-heritage-600 hover:bg-heritage-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
           Ajouter des documents
         </button>
       </div>
@@ -278,7 +284,10 @@ export default function ProjectDetailPage() {
           <p className="text-heritage-600 mb-6">
             Commencez par ajouter des documents à votre projet
           </p>
-          <button className="bg-heritage-600 hover:bg-heritage-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+          <button
+            onClick={() => setShowUploadModal(true)}
+            className="bg-heritage-600 hover:bg-heritage-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
             Ajouter des documents
           </button>
         </div>
@@ -333,6 +342,13 @@ export default function ProjectDetailPage() {
           ))}
         </div>
       )}
+
+      <UploadModal
+        projectId={projectId}
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUploadComplete={fetchDocuments}
+      />
     </div>
   );
 }
