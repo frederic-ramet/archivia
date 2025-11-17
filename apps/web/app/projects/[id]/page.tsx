@@ -74,6 +74,36 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
+  const [ocrProcessing, setOcrProcessing] = useState<string | null>(null);
+
+  const handleOCR = async (docId: string) => {
+    setOcrProcessing(docId);
+    try {
+      const response = await fetch(`/api/documents/${docId}/ocr`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        // Update the document in local state
+        setDocuments((prev) =>
+          prev.map((d) =>
+            d.id === docId
+              ? { ...d, transcriptionStatus: "completed" }
+              : d
+          )
+        );
+        alert(`OCR terminé ! ${data.data.ocr.textLength} caractères extraits.`);
+      } else {
+        alert(data.error || "Échec de l'OCR");
+      }
+    } catch (err) {
+      console.error("OCR error:", err);
+      alert("Erreur lors de l'OCR");
+    } finally {
+      setOcrProcessing(null);
+    }
+  };
 
   const handleDeleteDocument = async (docId: string, docTitle: string) => {
     if (!confirm(`Êtes-vous sûr de vouloir supprimer "${docTitle}" ?`)) {
@@ -398,6 +428,53 @@ export default function ProjectDetailPage() {
                     </svg>
                   )}
                 </button>
+                {doc.type === "image" && doc.transcriptionStatus === "pending" && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOCR(doc.id);
+                    }}
+                    disabled={ocrProcessing === doc.id}
+                    className="absolute top-2 left-2 bg-blue-500 hover:bg-blue-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                    title="Lancer OCR"
+                  >
+                    {ocrProcessing === doc.id ? (
+                      <svg
+                        className="w-4 h-4 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                )}
               </div>
               <div className="p-3">
                 <h4 className="text-sm font-medium text-heritage-900 truncate">

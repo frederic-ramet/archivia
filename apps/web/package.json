@@ -11,6 +11,7 @@
     "clean": "rm -rf .next out"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.69.0",
     "@archivia/database": "workspace:*",
     "@archivia/shared-types": "workspace:*",
     "bcryptjs": "^3.0.3",
