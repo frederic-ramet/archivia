@@ -6,6 +6,11 @@ import crypto from "crypto";
 import { db, documents, projects } from "@archivia/database";
 import { eq } from "drizzle-orm";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import {
+  generateThumbnail,
+  getThumbnailPath,
+  supportsThumbnail,
+} from "@/lib/thumbnails";
 
 // Configure upload limits
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -91,6 +96,20 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
     await writeFile(filePath, buffer);
 
+    // Generate thumbnail if supported
+    let thumbnailPublicPath = publicPath;
+    if (supportsThumbnail(file.type)) {
+      try {
+        const thumbPublicPath = getThumbnailPath(publicPath);
+        const thumbAbsPath = path.join(process.cwd(), "public", thumbPublicPath);
+        await generateThumbnail(filePath, thumbAbsPath);
+        thumbnailPublicPath = thumbPublicPath;
+      } catch (thumbErr) {
+        console.error("Thumbnail generation failed:", thumbErr);
+        // Continue with original file as thumbnail
+      }
+    }
+
     // Determine document type based on file
     let docType: "image" | "manuscript" | "printed" | "mixed" = "image";
     if (file.type === "application/pdf") {
@@ -120,7 +139,7 @@ export async function POST(request: NextRequest) {
         type: docType,
         title,
         filePath: publicPath,
-        thumbnailPath: publicPath, // For now, use same as main file
+        thumbnailPath: thumbnailPublicPath,
         transcriptionStatus: "pending",
         category: category || undefined,
         period: period || undefined,
@@ -219,6 +238,19 @@ export async function PUT(request: NextRequest) {
         const buffer = Buffer.from(bytes);
         await writeFile(filePath, buffer);
 
+        // Generate thumbnail if supported
+        let thumbnailPublicPath = publicPath;
+        if (supportsThumbnail(file.type)) {
+          try {
+            const thumbPublicPath = getThumbnailPath(publicPath);
+            const thumbAbsPath = path.join(process.cwd(), "public", thumbPublicPath);
+            await generateThumbnail(filePath, thumbAbsPath);
+            thumbnailPublicPath = thumbPublicPath;
+          } catch {
+            // Continue with original file as thumbnail
+          }
+        }
+
         // Determine document type
         let docType: "image" | "manuscript" | "printed" | "mixed" = "image";
         if (file.type === "application/pdf") {
@@ -233,7 +265,7 @@ export async function PUT(request: NextRequest) {
           type: docType,
           title: file.name.replace(fileExt, ""),
           filePath: publicPath,
-          thumbnailPath: publicPath,
+          thumbnailPath: thumbnailPublicPath,
           transcriptionStatus: "pending",
           tags: [],
           metadata: {
