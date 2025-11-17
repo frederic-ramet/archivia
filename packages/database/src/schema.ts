@@ -71,6 +71,8 @@ export const documents = sqliteTable("documents", {
     .notNull()
     .default(sql`'{}'`),
 
+  position: integer("position").notNull().default(0),
+
   createdAt: text("created_at")
     .notNull()
     .default(sql`CURRENT_TIMESTAMP`),

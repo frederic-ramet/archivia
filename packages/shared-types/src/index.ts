@@ -157,3 +157,6 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore: boolean;
 }
+
+// Export API validation schemas
+export * from "./api";

@@ -13,6 +13,18 @@ const nextConfig = {
   },
   experimental: {
     typedRoutes: true,
+    serverComponentsExternalPackages: ["better-sqlite3"],
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Externalize native modules
+      config.externals.push("better-sqlite3");
+    }
+    return config;
+  },
+  // Ensure output tracing includes native modules
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./node_modules/better-sqlite3/**/*"],
   },
 };
 
