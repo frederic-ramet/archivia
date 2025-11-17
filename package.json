@@ -1,0 +1,26 @@
+{
+  "name": "archivia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plateforme de préservation et valorisation du patrimoine",
+  "scripts": {
+    "dev": "pnpm --filter @archivia/web dev",
+    "build": "pnpm --filter @archivia/web build",
+    "start": "pnpm --filter @archivia/web start",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check",
+    "clean": "pnpm -r clean",
+    "db:generate": "pnpm --filter @archivia/database generate",
+    "db:migrate": "pnpm --filter @archivia/database migrate",
+    "db:seed": "pnpm --filter @archivia/database seed"
+  },
+  "keywords": [
+    "heritage",
+    "patrimoine",
+    "archive",
+    "ocr",
+    "semantic-search"
+  ],
+  "author": "Frédéric Ramet",
+  "license": "MIT"
+}
