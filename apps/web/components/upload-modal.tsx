@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 
 interface UploadModalProps {
   projectId: string;
@@ -248,12 +249,14 @@ export function UploadModal({
                   className="bg-heritage-50 rounded-lg p-4 border border-heritage-200"
                 >
                   <div className="flex items-start space-x-4">
-                    <div className="w-20 h-20 bg-heritage-100 rounded flex-shrink-0 overflow-hidden">
+                    <div className="w-20 h-20 bg-heritage-100 rounded flex-shrink-0 overflow-hidden relative">
                       {uploadFile.preview ? (
-                        <img
+                        <Image
                           src={uploadFile.preview}
                           alt={uploadFile.title}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-heritage-400">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { UploadModal } from "@/components/upload-modal";
 
@@ -73,7 +74,7 @@ export default function ProjectDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       setLoadingDocs(true);
       const response = await fetch(
@@ -89,7 +90,7 @@ export default function ProjectDetailPage() {
     } finally {
       setLoadingDocs(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     async function fetchProject() {
@@ -112,7 +113,7 @@ export default function ProjectDetailPage() {
 
     fetchProject();
     fetchDocuments();
-  }, [projectId]);
+  }, [projectId, fetchDocuments]);
 
   const getStatusBadge = (status: string) => {
     const colors: Record<string, string> = {
@@ -300,12 +301,14 @@ export default function ProjectDetailPage() {
               key={doc.id}
               className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
             >
-              <div className="aspect-square bg-heritage-100 flex items-center justify-center">
+              <div className="aspect-square bg-heritage-100 flex items-center justify-center relative">
                 {doc.thumbnailPath ? (
-                  <img
+                  <Image
                     src={doc.thumbnailPath}
                     alt={doc.title}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <div className="text-heritage-400">
