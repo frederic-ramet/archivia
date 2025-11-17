@@ -2062,6 +2062,1132 @@ export default function InsightPage() {
    - Visualisations exportables
    - Formats académiques
 
+### 3.10 Gestion Multi-Projets (FONCTIONNALITÉ ESSENTIELLE)
+
+Permet de gérer plusieurs corpus patrimoniaux indépendants (ex: Journal de Guerre, Opale) avec isolation complète des données et possibilité de templates réutilisables.
+
+```typescript
+// packages/database/src/schemas/projects.ts
+import { pgTable, uuid, varchar, text, jsonb, timestamp, boolean } from 'drizzle-orm/pg-core';
+
+export const projects = pgTable('projects', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique().notNull(),
+  description: text('description'),
+
+  // Configuration du projet
+  config: jsonb('config').$type<ProjectConfig>().default({}),
+
+  // Template utilisé
+  templateId: uuid('template_id').references(() => projectTemplates.id),
+
+  // Personnalisation visuelle
+  branding: jsonb('branding').$type<ProjectBranding>().default({}),
+
+  // Métadonnées du projet
+  metadata: jsonb('metadata').$type<ProjectMetadata>().default({}),
+
+  // Statut
+  status: varchar('status', { length: 50 }).default('active'), // 'draft', 'active', 'archived'
+  isPublic: boolean('is_public').default(false),
+
+  // Domaine personnalisé (optionnel)
+  customDomain: varchar('custom_domain', { length: 255 }),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  publishedAt: timestamp('published_at'),
+});
+
+export const projectTemplates = pgTable('project_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+
+  // Configuration par défaut
+  defaultConfig: jsonb('default_config').$type<ProjectConfig>(),
+  defaultBranding: jsonb('default_branding').$type<ProjectBranding>(),
+
+  // Structure prédéfinie
+  structure: jsonb('structure').$type<TemplateStructure>(),
+
+  // Catégories suggérées
+  suggestedCategories: jsonb('suggested_categories').$type<string[]>(),
+  suggestedTags: jsonb('suggested_tags').$type<string[]>(),
+
+  // Ontologie de base
+  baseOntologySchema: jsonb('base_ontology_schema').$type<OntologySchema>(),
+
+  isSystem: boolean('is_system').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Types
+interface ProjectConfig {
+  // Fonctionnalités activées
+  features: {
+    ocr: boolean;
+    annotations: boolean;
+    hotspots: boolean;
+    stories: boolean;
+    timeline: boolean;
+    map: boolean;
+    ontology: boolean;
+    aiGeneration: boolean;
+    publicReader: boolean;
+    collaboration: boolean;
+  };
+
+  // Providers IA
+  aiProviders: {
+    ocr: 'tesseract' | 'ollama' | 'claude' | 'google-vision';
+    embedding: 'local' | 'openai' | 'cohere';
+    generation: 'claude' | 'gpt-4' | 'ollama';
+  };
+
+  // Langue principale
+  primaryLanguage: string;
+
+  // Formats acceptés
+  acceptedFormats: string[];
+
+  // Limites
+  limits: {
+    maxDocuments: number;
+    maxStorageGB: number;
+    maxCollaborators: number;
+  };
+}
+
+interface ProjectBranding {
+  // Identité visuelle
+  logo?: string;
+  favicon?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+
+  // Typographie
+  headingFont: string;
+  bodyFont: string;
+
+  // Contenu
+  heroTitle: string;
+  heroSubtitle: string;
+  heroImage?: string;
+
+  // Footer
+  footerText: string;
+  socialLinks: { platform: string; url: string }[];
+
+  // SEO
+  metaTitle: string;
+  metaDescription: string;
+  ogImage?: string;
+}
+
+interface ProjectMetadata {
+  // Informations générales
+  institution?: string;
+  curator?: string;
+  contributors: string[];
+
+  // Temporalité du corpus
+  periodStart?: string;
+  periodEnd?: string;
+
+  // Géographie
+  primaryLocation?: string;
+  relatedLocations?: string[];
+
+  // Thématiques
+  themes: string[];
+  subjects: string[];
+
+  // Droits
+  license: string;
+  copyrightHolder?: string;
+  accessRights: 'public' | 'restricted' | 'private';
+
+  // Citation recommandée
+  citation?: string;
+}
+```
+
+**Service de gestion multi-projets** :
+
+```typescript
+// apps/web/lib/services/project-manager.ts
+
+export class ProjectManager {
+  private db: DatabaseClient;
+
+  /**
+   * Création d'un nouveau projet
+   */
+  async createProject(
+    data: CreateProjectInput,
+    userId: string
+  ): Promise<Project> {
+    // Générer le slug unique
+    const slug = await this.generateUniqueSlug(data.name);
+
+    // Appliquer le template si spécifié
+    let config = data.config || {};
+    let branding = data.branding || {};
+
+    if (data.templateId) {
+      const template = await this.getTemplate(data.templateId);
+      config = { ...template.defaultConfig, ...config };
+      branding = { ...template.defaultBranding, ...branding };
+    }
+
+    // Créer le projet
+    const project = await this.db.insert(projects).values({
+      name: data.name,
+      slug,
+      description: data.description,
+      config,
+      branding,
+      templateId: data.templateId,
+      metadata: data.metadata || {},
+    }).returning();
+
+    // Ajouter le créateur comme admin
+    await this.addMember(project[0].id, userId, 'admin');
+
+    // Initialiser la structure de base
+    await this.initializeProjectStructure(project[0].id, data.templateId);
+
+    return project[0];
+  }
+
+  /**
+   * Cloner un projet existant
+   */
+  async cloneProject(
+    sourceProjectId: string,
+    newName: string,
+    options: CloneOptions
+  ): Promise<Project> {
+    const source = await this.getProject(sourceProjectId);
+
+    const clonedProject = await this.createProject({
+      name: newName,
+      description: `Clone de ${source.name}`,
+      config: source.config,
+      branding: source.branding,
+      metadata: source.metadata,
+    }, options.userId);
+
+    // Cloner le contenu si demandé
+    if (options.includeDocuments) {
+      await this.cloneDocuments(sourceProjectId, clonedProject.id);
+    }
+
+    if (options.includeOntology) {
+      await this.cloneOntology(sourceProjectId, clonedProject.id);
+    }
+
+    if (options.includeStories) {
+      await this.cloneStories(sourceProjectId, clonedProject.id);
+    }
+
+    return clonedProject;
+  }
+
+  /**
+   * Créer un projet à partir d'un template prédéfini
+   */
+  async createFromTemplate(
+    templateName: 'journal' | 'photo-archive' | 'genealogy' | 'museum',
+    projectData: Partial<CreateProjectInput>
+  ): Promise<Project> {
+    const templateConfigs = {
+      journal: {
+        features: {
+          ocr: true,
+          annotations: true,
+          hotspots: false,
+          stories: true,
+          timeline: true,
+          map: false,
+          ontology: true,
+          aiGeneration: true,
+          publicReader: true,
+          collaboration: true,
+        },
+        suggestedCategories: ['Entrée de journal', 'Lettre', 'Document officiel', 'Note personnelle'],
+        baseOntologyTypes: ['Personne', 'Lieu', 'Événement', 'Date', 'Concept'],
+      },
+      'photo-archive': {
+        features: {
+          ocr: false,
+          annotations: true,
+          hotspots: true,
+          stories: true,
+          timeline: true,
+          map: true,
+          ontology: true,
+          aiGeneration: true,
+          publicReader: true,
+          collaboration: true,
+        },
+        suggestedCategories: ['Portrait', 'Paysage', 'Groupe', 'Événement', 'Architecture'],
+        baseOntologyTypes: ['Personne', 'Lieu', 'Objet', 'Activité', 'Période'],
+      },
+      genealogy: {
+        features: {
+          ocr: true,
+          annotations: true,
+          hotspots: false,
+          stories: true,
+          timeline: true,
+          map: true,
+          ontology: true,
+          aiGeneration: true,
+          publicReader: false,
+          collaboration: true,
+        },
+        suggestedCategories: ['Acte de naissance', 'Acte de mariage', 'Acte de décès', 'Recensement'],
+        baseOntologyTypes: ['Personne', 'Famille', 'Lieu', 'Date', 'Événement familial'],
+      },
+      museum: {
+        features: {
+          ocr: false,
+          annotations: true,
+          hotspots: true,
+          stories: true,
+          timeline: true,
+          map: true,
+          ontology: true,
+          aiGeneration: true,
+          publicReader: true,
+          collaboration: false,
+        },
+        suggestedCategories: ['Peinture', 'Sculpture', 'Objet', 'Textile', 'Céramique'],
+        baseOntologyTypes: ['Artiste', 'Œuvre', 'Période', 'Style', 'Matériau', 'Technique'],
+      },
+    };
+
+    const template = templateConfigs[templateName];
+
+    return this.createProject({
+      ...projectData,
+      config: {
+        ...projectData.config,
+        features: template.features,
+      },
+    }, projectData.userId!);
+  }
+
+  /**
+   * Dashboard multi-projets
+   */
+  async getUserProjects(userId: string): Promise<ProjectSummary[]> {
+    const userProjects = await this.db.query.projectMembers.findMany({
+      where: eq(projectMembers.userId, userId),
+      with: {
+        project: {
+          with: {
+            _count: {
+              documents: true,
+              entities: true,
+              stories: true,
+              members: true,
+            },
+          },
+        },
+      },
+    });
+
+    return userProjects.map(pm => ({
+      id: pm.project.id,
+      name: pm.project.name,
+      slug: pm.project.slug,
+      role: pm.role,
+      status: pm.project.status,
+      isPublic: pm.project.isPublic,
+      documentCount: pm.project._count.documents,
+      entityCount: pm.project._count.entities,
+      storyCount: pm.project._count.stories,
+      memberCount: pm.project._count.members,
+      lastActivity: pm.project.updatedAt,
+      branding: pm.project.branding,
+    }));
+  }
+
+  /**
+   * Importer un projet depuis JSON (migration)
+   */
+  async importProject(
+    exportData: ProjectExport,
+    userId: string
+  ): Promise<Project> {
+    // Créer le projet
+    const project = await this.createProject({
+      name: exportData.metadata.name,
+      description: exportData.metadata.description,
+      config: exportData.config,
+      branding: exportData.branding,
+      metadata: exportData.metadata,
+    }, userId);
+
+    // Importer les documents
+    for (const doc of exportData.documents) {
+      await this.importDocument(project.id, doc);
+    }
+
+    // Importer l'ontologie
+    if (exportData.ontology) {
+      await this.importOntology(project.id, exportData.ontology);
+    }
+
+    // Importer les stories
+    for (const story of exportData.stories || []) {
+      await this.importStory(project.id, story);
+    }
+
+    return project;
+  }
+}
+```
+
+**Interface de gestion des projets** :
+
+```typescript
+// apps/web/app/(auth)/dashboard/page.tsx
+'use client';
+
+export default function DashboardPage() {
+  const { projects, isLoading } = useUserProjects();
+
+  return (
+    <div className="container mx-auto py-8">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Mes Projets</h1>
+        <Button onClick={() => openCreateProjectModal()}>
+          + Nouveau Projet
+        </Button>
+      </header>
+
+      {/* Templates rapides */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Créer à partir d'un template</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <TemplateCard
+            icon="📔"
+            title="Journal / Carnet"
+            description="Documents manuscrits avec OCR et ontologie"
+            onClick={() => createFromTemplate('journal')}
+          />
+          <TemplateCard
+            icon="📸"
+            title="Archive Photo"
+            description="Collection d'images avec hotspots et stories"
+            onClick={() => createFromTemplate('photo-archive')}
+          />
+          <TemplateCard
+            icon="🌳"
+            title="Généalogie"
+            description="Arbres familiaux et actes d'état civil"
+            onClick={() => createFromTemplate('genealogy')}
+          />
+          <TemplateCard
+            icon="🏛️"
+            title="Collection Muséale"
+            description="Catalogue d'œuvres avec métadonnées riches"
+            onClick={() => createFromTemplate('museum')}
+          />
+        </div>
+      </section>
+
+      {/* Liste des projets */}
+      <section>
+        <h2 className="text-xl font-semibold mb-4">Projets actifs</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {projects.map(project => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProjectCard({ project }: { project: ProjectSummary }) {
+  return (
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          {project.branding.logo && (
+            <img src={project.branding.logo} alt="" className="w-12 h-12 rounded" />
+          )}
+          <div>
+            <CardTitle>{project.name}</CardTitle>
+            <Badge variant={project.isPublic ? 'success' : 'secondary'}>
+              {project.isPublic ? 'Public' : 'Privé'}
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>📄 {project.documentCount} documents</div>
+          <div>🏷️ {project.entityCount} entités</div>
+          <div>📖 {project.storyCount} stories</div>
+          <div>👥 {project.memberCount} membres</div>
+        </div>
+        <div className="text-xs text-gray-500 mt-2">
+          Dernière activité : {formatDate(project.lastActivity)}
+        </div>
+      </CardContent>
+      <CardFooter className="flex gap-2">
+        <Button variant="outline" asChild>
+          <Link href={`/workspace/${project.slug}`}>Éditer</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href={`/reader/${project.slug}`}>Consulter</Link>
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost">⋮</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => cloneProject(project.id)}>
+              Dupliquer
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportProject(project.id)}>
+              Exporter
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => buildStaticSite(project.id)}>
+              Générer site HTML
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => archiveProject(project.id)}>
+              Archiver
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardFooter>
+    </Card>
+  );
+}
+```
+
+### 3.11 Build HTML Statique (FONCTIONNALITÉ ESSENTIELLE)
+
+Génération de sites web autonomes et exportables, déployables sur n'importe quel hébergeur statique (GitHub Pages, Netlify, etc.).
+
+```typescript
+// apps/workers/static-builder/src/html-generator.ts
+
+export class StaticSiteGenerator {
+  private project: Project;
+  private documents: Document[];
+  private ontology: OntologySnapshot;
+  private stories: Story[];
+  private outputDir: string;
+
+  /**
+   * Génération complète du site statique
+   */
+  async generate(projectId: string, options: BuildOptions): Promise<BuildResult> {
+    // Charger toutes les données du projet
+    await this.loadProjectData(projectId);
+
+    // Créer la structure de dossiers
+    this.outputDir = path.join(options.outputPath, this.project.slug);
+    await this.createDirectoryStructure();
+
+    // Générer les assets
+    await this.copyStaticAssets();
+    await this.generateStylesheet();
+    await this.generateServiceWorker();
+
+    // Générer les pages HTML
+    const pages = await this.generateAllPages(options);
+
+    // Générer les fichiers de données JSON (pour le JavaScript client)
+    await this.generateDataFiles();
+
+    // Générer le manifest PWA
+    await this.generateManifest();
+
+    // Générer le sitemap
+    await this.generateSitemap();
+
+    // Optimiser les images
+    if (options.optimizeImages) {
+      await this.optimizeImages();
+    }
+
+    // Créer l'archive ZIP
+    const zipPath = await this.createZipArchive();
+
+    return {
+      outputPath: this.outputDir,
+      zipPath,
+      pageCount: pages.length,
+      documentCount: this.documents.length,
+      totalSize: await this.calculateTotalSize(),
+      buildTime: Date.now(),
+    };
+  }
+
+  /**
+   * Structure des dossiers générés
+   */
+  private async createDirectoryStructure(): Promise<void> {
+    const dirs = [
+      '',                    // Racine
+      'assets',              // CSS, JS, fonts
+      'assets/css',
+      'assets/js',
+      'assets/fonts',
+      'images',              // Images optimisées
+      'images/thumbnails',   // Miniatures
+      'images/full',         // Haute résolution
+      'documents',           // Pages de détail
+      'stories',             // Pages de stories
+      'timeline',            // Frise chronologique
+      'ontology',            // Visualisation du graphe
+      'search',              // Page de recherche
+      'data',                // JSON pour JS client
+    ];
+
+    for (const dir of dirs) {
+      await fs.mkdir(path.join(this.outputDir, dir), { recursive: true });
+    }
+  }
+
+  /**
+   * Génération de la page d'accueil
+   */
+  private async generateHomePage(): Promise<string> {
+    const template = `
+<!DOCTYPE html>
+<html lang="${this.project.config.primaryLanguage || 'fr'}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${this.project.branding.metaTitle || this.project.name}</title>
+  <meta name="description" content="${this.project.branding.metaDescription}">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="${this.project.name}">
+  <meta property="og:description" content="${this.project.description}">
+  <meta property="og:image" content="./assets/og-image.jpg">
+  <meta property="og:type" content="website">
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./assets/favicon.ico">
+  <meta name="theme-color" content="${this.project.branding.primaryColor}">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="./assets/css/main.css">
+  <link rel="stylesheet" href="./assets/css/gallery.css">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(this.project.branding.headingFont)}&family=${encodeURIComponent(this.project.branding.bodyFont)}&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <nav class="main-nav">
+      <div class="logo">
+        ${this.project.branding.logo
+          ? `<img src="${this.project.branding.logo}" alt="${this.project.name}">`
+          : `<span>${this.project.name}</span>`
+        }
+      </div>
+      <ul class="nav-links">
+        <li><a href="./index.html">Accueil</a></li>
+        <li><a href="./gallery.html">Galerie</a></li>
+        ${this.stories.length > 0 ? '<li><a href="./stories.html">Parcours</a></li>' : ''}
+        <li><a href="./timeline.html">Chronologie</a></li>
+        <li><a href="./ontology/index.html">Graphe</a></li>
+        <li><a href="./search/index.html">Recherche</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero" style="background-image: url('${this.project.branding.heroImage}')">
+    <div class="hero-content">
+      <h1>${this.project.branding.heroTitle}</h1>
+      <p>${this.project.branding.heroSubtitle}</p>
+      <a href="./gallery.html" class="cta-button">Explorer la collection</a>
+    </div>
+  </section>
+
+  <!-- Statistiques -->
+  <section class="stats">
+    <div class="stat">
+      <span class="stat-number">${this.documents.length}</span>
+      <span class="stat-label">Documents</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number">${this.ontology.entities.length}</span>
+      <span class="stat-label">Entités</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number">${this.stories.length}</span>
+      <span class="stat-label">Parcours</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number">${this.project.metadata.periodStart} - ${this.project.metadata.periodEnd}</span>
+      <span class="stat-label">Période</span>
+    </div>
+  </section>
+
+  <!-- Documents récents -->
+  <section class="recent-documents">
+    <h2>Documents récents</h2>
+    <div class="document-grid">
+      ${this.documents.slice(0, 6).map(doc => this.generateDocumentCard(doc)).join('')}
+    </div>
+    <a href="./gallery.html" class="view-all">Voir tous les documents →</a>
+  </section>
+
+  <!-- Stories en vedette -->
+  ${this.stories.length > 0 ? `
+  <section class="featured-stories">
+    <h2>Parcours thématiques</h2>
+    <div class="story-grid">
+      ${this.stories.slice(0, 3).map(story => this.generateStoryCard(story)).join('')}
+    </div>
+  </section>
+  ` : ''}
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-content">
+      <p>${this.project.branding.footerText}</p>
+      <p>Licence : ${this.project.metadata.license}</p>
+      ${this.project.metadata.citation
+        ? `<p class="citation">Citation : ${this.project.metadata.citation}</p>`
+        : ''
+      }
+      <div class="social-links">
+        ${this.project.branding.socialLinks.map(link =>
+          `<a href="${link.url}" target="_blank">${link.platform}</a>`
+        ).join(' | ')}
+      </div>
+    </div>
+    <p class="credits">
+      Généré avec <a href="https://archivia.app">Archivia</a> -
+      Plateforme de préservation du patrimoine
+    </p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="./assets/js/main.js"></script>
+  <script>
+    // Enregistrement du Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
+`;
+
+    return template;
+  }
+
+  /**
+   * Génération de la galerie interactive
+   */
+  private async generateGalleryPage(): Promise<string> {
+    return `
+<!DOCTYPE html>
+<html lang="${this.project.config.primaryLanguage || 'fr'}">
+<head>
+  <meta charset="UTF-8">
+  <title>Galerie - ${this.project.name}</title>
+  <link rel="stylesheet" href="./assets/css/main.css">
+  <link rel="stylesheet" href="./assets/css/gallery.css">
+</head>
+<body>
+  ${this.generateHeader()}
+
+  <main class="gallery-page">
+    <h1>Galerie</h1>
+
+    <!-- Filtres -->
+    <div class="filters">
+      <input
+        type="search"
+        id="search-input"
+        placeholder="Rechercher..."
+        class="search-box"
+      >
+
+      <select id="category-filter" class="filter-select">
+        <option value="">Toutes catégories</option>
+        ${this.getUniqueCategories().map(cat =>
+          `<option value="${cat}">${cat}</option>`
+        ).join('')}
+      </select>
+
+      <select id="period-filter" class="filter-select">
+        <option value="">Toutes périodes</option>
+        ${this.getUniquePeriods().map(period =>
+          `<option value="${period}">${period}</option>`
+        ).join('')}
+      </select>
+
+      <div class="view-toggle">
+        <button data-view="grid" class="active">Grille</button>
+        <button data-view="masonry">Masonry</button>
+        <button data-view="list">Liste</button>
+      </div>
+    </div>
+
+    <!-- Grille de documents -->
+    <div id="gallery-grid" class="gallery-grid">
+      ${this.documents.map(doc => this.generateDocumentCard(doc)).join('')}
+    </div>
+
+    <!-- Modal de visualisation -->
+    <div id="lightbox" class="lightbox hidden">
+      <button class="close-btn">&times;</button>
+      <button class="prev-btn">&lt;</button>
+      <button class="next-btn">&gt;</button>
+      <div class="lightbox-content">
+        <img id="lightbox-image" src="" alt="">
+        <div id="lightbox-info" class="lightbox-info"></div>
+      </div>
+    </div>
+  </main>
+
+  ${this.generateFooter()}
+
+  <!-- Scripts -->
+  <script src="./assets/js/gallery.js"></script>
+  <script src="./data/documents.js"></script>
+  <script>
+    // Initialisation de la galerie avec filtrage client-side
+    const gallery = new GalleryController(documentsData);
+    gallery.init();
+  </script>
+</body>
+</html>
+`;
+  }
+
+  /**
+   * Génération des pages de détail pour chaque document
+   */
+  private async generateDocumentPages(): Promise<void> {
+    for (const doc of this.documents) {
+      const html = await this.generateDocumentDetailPage(doc);
+      await fs.writeFile(
+        path.join(this.outputDir, 'documents', `${doc.id}.html`),
+        html
+      );
+    }
+  }
+
+  private async generateDocumentDetailPage(doc: Document): Promise<string> {
+    const relatedDocs = await this.findRelatedDocuments(doc);
+    const entities = await this.getDocumentEntities(doc.id);
+
+    return `
+<!DOCTYPE html>
+<html lang="${this.project.config.primaryLanguage || 'fr'}">
+<head>
+  <meta charset="UTF-8">
+  <title>${doc.title} - ${this.project.name}</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/document.css">
+</head>
+<body>
+  ${this.generateHeader('../')}
+
+  <main class="document-detail">
+    <div class="document-viewer">
+      <!-- Image avec zoom -->
+      <div class="image-container" id="zoom-container">
+        <img src="../images/full/${doc.id}.jpg" alt="${doc.title}" id="main-image">
+
+        ${doc.hotspots && doc.hotspots.length > 0 ? `
+        <!-- Hotspots -->
+        <div class="hotspots">
+          ${doc.hotspots.map(hotspot => `
+            <button
+              class="hotspot hotspot-${hotspot.type}"
+              style="left: ${hotspot.x}%; top: ${hotspot.y}%"
+              data-info="${encodeURIComponent(JSON.stringify(hotspot))}"
+            >
+              <span class="hotspot-label">${hotspot.label}</span>
+            </button>
+          `).join('')}
+        </div>
+        ` : ''}
+      </div>
+
+      <div class="zoom-controls">
+        <button id="zoom-in">+</button>
+        <button id="zoom-out">-</button>
+        <button id="zoom-reset">↺</button>
+        <span id="zoom-level">100%</span>
+      </div>
+    </div>
+
+    <div class="document-info">
+      <h1>${doc.title}</h1>
+
+      <div class="metadata">
+        <div class="meta-item">
+          <strong>Catégorie :</strong> ${doc.category}
+        </div>
+        <div class="meta-item">
+          <strong>Période :</strong> ${doc.period}
+        </div>
+        <div class="meta-item">
+          <strong>Tags :</strong>
+          ${doc.tags.map(tag => `<span class="tag">${tag}</span>`).join(' ')}
+        </div>
+      </div>
+
+      ${doc.transcription ? `
+      <div class="transcription">
+        <h2>Transcription</h2>
+        <div class="transcription-text">
+          ${doc.transcription}
+        </div>
+      </div>
+      ` : ''}
+
+      <div class="historical-context">
+        <h2>Contexte historique</h2>
+        <p>${doc.historicalContext}</p>
+      </div>
+
+      ${entities.length > 0 ? `
+      <div class="entities">
+        <h2>Entités mentionnées</h2>
+        <ul class="entity-list">
+          ${entities.map(entity => `
+            <li>
+              <a href="../ontology/entity-${entity.id}.html">
+                <span class="entity-type entity-${entity.type}">${entity.type}</span>
+                ${entity.name}
+              </a>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+      ` : ''}
+
+      ${relatedDocs.length > 0 ? `
+      <div class="related-documents">
+        <h2>Documents similaires</h2>
+        <div class="related-grid">
+          ${relatedDocs.map(related => `
+            <a href="./${related.id}.html" class="related-card">
+              <img src="../images/thumbnails/${related.id}.jpg" alt="${related.title}">
+              <span>${related.title}</span>
+            </a>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+    </div>
+  </main>
+
+  ${this.generateFooter('../')}
+
+  <script src="../assets/js/document-viewer.js"></script>
+</body>
+</html>
+`;
+  }
+
+  /**
+   * Génération du JavaScript pour recherche client-side
+   */
+  private async generateSearchPage(): Promise<string> {
+    // Créer un index de recherche côté client
+    const searchIndex = this.documents.map(doc => ({
+      id: doc.id,
+      title: doc.title,
+      description: doc.description,
+      transcription: doc.transcription?.substring(0, 1000),
+      tags: doc.tags,
+      category: doc.category,
+      period: doc.period,
+    }));
+
+    await fs.writeFile(
+      path.join(this.outputDir, 'data', 'search-index.js'),
+      `const searchIndex = ${JSON.stringify(searchIndex)};`
+    );
+
+    return `
+<!DOCTYPE html>
+<html lang="${this.project.config.primaryLanguage || 'fr'}">
+<head>
+  <meta charset="UTF-8">
+  <title>Recherche - ${this.project.name}</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body>
+  ${this.generateHeader('../')}
+
+  <main class="search-page">
+    <h1>Recherche dans la collection</h1>
+
+    <div class="search-box">
+      <input
+        type="search"
+        id="search-query"
+        placeholder="Entrez votre recherche..."
+        class="search-input"
+      >
+      <button id="search-btn" class="search-button">Rechercher</button>
+    </div>
+
+    <div id="search-results" class="search-results">
+      <!-- Résultats insérés dynamiquement -->
+    </div>
+  </main>
+
+  ${this.generateFooter('../')}
+
+  <script src="../data/search-index.js"></script>
+  <script src="../assets/js/search.js"></script>
+</body>
+</html>
+`;
+  }
+
+  /**
+   * Génération du Service Worker pour offline
+   */
+  private async generateServiceWorker(): Promise<void> {
+    const swContent = `
+const CACHE_NAME = '${this.project.slug}-v1';
+const urlsToCache = [
+  './',
+  './index.html',
+  './gallery.html',
+  './assets/css/main.css',
+  './assets/js/main.js',
+  './data/documents.js',
+  ${this.documents.slice(0, 50).map(doc =>
+    `'./images/thumbnails/${doc.id}.jpg'`
+  ).join(',\n  ')}
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      if (response) return response;
+      return fetch(event.request).then(response => {
+        if (!response || response.status !== 200) return response;
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache);
+        });
+        return response;
+      });
+    })
+  );
+});
+`;
+
+    await fs.writeFile(path.join(this.outputDir, 'sw.js'), swContent);
+  }
+
+  /**
+   * Créer archive ZIP du site
+   */
+  private async createZipArchive(): Promise<string> {
+    const archiver = require('archiver');
+    const zipPath = `${this.outputDir}.zip`;
+    const output = createWriteStream(zipPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.pipe(output);
+    archive.directory(this.outputDir, false);
+    await archive.finalize();
+
+    return zipPath;
+  }
+}
+
+// API endpoint pour déclencher le build
+// apps/web/app/api/projects/[projectId]/build-static/route.ts
+export async function POST(
+  request: Request,
+  { params }: { params: { projectId: string } }
+) {
+  const { projectId } = params;
+  const body = await request.json();
+
+  const generator = new StaticSiteGenerator();
+
+  const result = await generator.generate(projectId, {
+    outputPath: '/tmp/archivia-builds',
+    optimizeImages: body.optimizeImages ?? true,
+    includeSearch: body.includeSearch ?? true,
+    includePWA: body.includePWA ?? true,
+    customCSS: body.customCSS,
+  });
+
+  return NextResponse.json({
+    success: true,
+    downloadUrl: `/api/projects/${projectId}/download-build`,
+    ...result,
+  });
+}
+```
+
+**Fonctionnalités du build HTML** :
+
+1. **Site complet autonome**
+   - Pages statiques HTML/CSS/JS
+   - Pas de dépendance serveur
+   - Déployable sur GitHub Pages, Netlify, etc.
+
+2. **Galerie interactive côté client**
+   - Filtrage par catégorie/période/tags
+   - Recherche full-text en JavaScript
+   - Lightbox avec zoom
+
+3. **PWA offline**
+   - Service Worker avec cache
+   - Installation sur mobile
+   - Fonctionne sans connexion
+
+4. **SEO optimisé**
+   - Métadonnées Open Graph
+   - Sitemap généré
+   - Structure sémantique
+
+5. **Personnalisation**
+   - Branding du projet
+   - CSS personnalisable
+   - Contenu localisé
+
+6. **Export**
+   - Archive ZIP téléchargeable
+   - Incluant toutes les images
+   - Documentation incluse
+
 ---
 
 ## 4. Interface Utilisateur
