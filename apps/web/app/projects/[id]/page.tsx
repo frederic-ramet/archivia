@@ -73,6 +73,32 @@ export default function ProjectDetailPage() {
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
+
+  const handleDeleteDocument = async (docId: string, docTitle: string) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer "${docTitle}" ?`)) {
+      return;
+    }
+
+    setDeletingDoc(docId);
+    try {
+      const response = await fetch(`/api/documents/${docId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setDocuments((prev) => prev.filter((d) => d.id !== docId));
+      } else {
+        alert(data.error || "Échec de la suppression");
+      }
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Erreur lors de la suppression");
+    } finally {
+      setDeletingDoc(null);
+    }
+  };
 
   const fetchDocuments = useCallback(async () => {
     try {
@@ -299,7 +325,7 @@ export default function ProjectDetailPage() {
           {documents.map((doc) => (
             <div
               key={doc.id}
-              className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+              className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow group relative"
             >
               <div className="aspect-square bg-heritage-100 flex items-center justify-center relative">
                 {doc.thumbnailPath ? (
@@ -327,6 +353,51 @@ export default function ProjectDetailPage() {
                     </svg>
                   </div>
                 )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteDocument(doc.id, doc.title);
+                  }}
+                  disabled={deletingDoc === doc.id}
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                  title="Supprimer"
+                >
+                  {deletingDoc === doc.id ? (
+                    <svg
+                      className="w-4 h-4 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                  )}
+                </button>
               </div>
               <div className="p-3">
                 <h4 className="text-sm font-medium text-heritage-900 truncate">

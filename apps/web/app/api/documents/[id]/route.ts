@@ -3,6 +3,9 @@ import { db, documents } from "@archivia/database";
 import { eq } from "drizzle-orm";
 import { updateDocumentSchema } from "@archivia/shared-types";
 import { successResponse, errorResponse, parseBody } from "@/lib/api-utils";
+import { unlink } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -110,7 +113,7 @@ export async function DELETE(
 
   try {
     const [existing] = await db
-      .select({ id: documents.id })
+      .select()
       .from(documents)
       .where(eq(documents.id, id))
       .limit(1);
@@ -119,7 +122,35 @@ export async function DELETE(
       return errorResponse(`Document with id '${id}' not found`, 404);
     }
 
+    // Delete files from disk
+    const filesToDelete: string[] = [];
+
+    if (existing.filePath) {
+      const absolutePath = path.join(process.cwd(), "public", existing.filePath);
+      if (existsSync(absolutePath)) {
+        filesToDelete.push(absolutePath);
+      }
+    }
+
+    if (existing.thumbnailPath && existing.thumbnailPath !== existing.filePath) {
+      const thumbPath = path.join(process.cwd(), "public", existing.thumbnailPath);
+      if (existsSync(thumbPath)) {
+        filesToDelete.push(thumbPath);
+      }
+    }
+
+    // Delete from database first
     await db.delete(documents).where(eq(documents.id, id));
+
+    // Then clean up files (non-blocking, best effort)
+    for (const filePath of filesToDelete) {
+      try {
+        await unlink(filePath);
+      } catch (fileErr) {
+        console.warn(`Failed to delete file ${filePath}:`, fileErr);
+        // Continue anyway - DB deletion is the important part
+      }
+    }
 
     return successResponse({ id }, "Document deleted successfully");
   } catch (err) {
