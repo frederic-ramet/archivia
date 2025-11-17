@@ -12,7 +12,7 @@ const nextConfig = {
     formats: ["image/avif", "image/webp"],
   },
   experimental: {
-    typedRoutes: true,
+    // typedRoutes: true, // Disabled for now - enable when routes are stable
     serverComponentsExternalPackages: ["better-sqlite3"],
   },
   webpack: (config, { isServer }) => {
