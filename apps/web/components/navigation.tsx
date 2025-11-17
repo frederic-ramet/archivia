@@ -48,7 +48,7 @@ export function Navigation() {
             </Link>
             {session?.user?.role === "admin" && (
               <Link
-                href="/admin/settings"
+                href="/admin"
                 className={`transition-colors ${
                   isActive("/admin")
                     ? "text-heritage-300"
