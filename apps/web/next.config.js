@@ -14,6 +14,24 @@ const nextConfig = {
   experimental: {
     // typedRoutes: true, // Disabled for now - enable when routes are stable
   },
+  webpack: (config, { isServer }) => {
+    // Ignore README.md files in node_modules
+    config.module.rules.push({
+      test: /README\.md$/,
+      type: "asset/resource",
+      generator: {
+        emit: false,
+      },
+    });
+
+    // Externalize libsql for server-side to avoid bundling issues
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push("libsql");
+    }
+
+    return config;
+  },
 };
 
 module.exports = nextConfig;
