@@ -28,7 +28,7 @@ Ce document définit la vision d'une **plateforme open-source de numérisation, 
 | **Multi-corpus** | ❌ Mono-projet | ❌ Mono-projet | ✅ Multi-tenant |
 | **Export** | ❌ | ❌ | ✅ PDF, JSON-LD, BibTeX |
 
-### 1.2 Architecture Cible
+### 1.2 Architecture Cible - Les 3 Espaces
 
 ```
 ARCHIVIA PLATFORM
@@ -36,22 +36,35 @@ ARCHIVIA PLATFORM
 │   ├── API REST/GraphQL
 │   ├── Base de données relationnelle + vectorielle
 │   ├── Service OCR multi-provider
-│   ├── Service ontologie/NLP
-│   └── Service recherche hybride
+│   ├── Service ontologie/NLP progressif
+│   ├── Service recherche hybride
+│   └── Moteur de génération de contenu IA
 │
-├── 🖥️ STUDIO (Interface d'édition)
-│   ├── Import de documents
+├── 🔧 WORKSPACE (Espace TRAVAIL sur l'archive)
+│   ├── Import et numérisation
+│   ├── OCR et transcription
 │   ├── Éditeur d'annotations
 │   ├── Créateur de hotspots
-│   ├── Gestionnaire d'ontologie
-│   └── Générateur de contenus IA
+│   ├── Gestionnaire d'ontologie progressive
+│   ├── Validation et correction collaborative
+│   └── Génération de métadonnées IA
 │
-├── 📱 VIEWER (Interface publique)
+├── 📖 READER (Espace LECTURE de l'archive)
 │   ├── Galerie interactive
 │   ├── Mode histoire immersif
-│   ├── Recherche sémantique
-│   ├── Timeline & cartes
+│   ├── Navigation chronologique
+│   ├── Visualisation géographique
+│   ├── Parcours thématiques
 │   └── PWA offline
+│
+├── 🧠 INSIGHT (Espace COMPRÉHENSION de l'archive)
+│   ├── Analyse sémantique profonde
+│   ├── Graphe de connaissances interactif
+│   ├── Moteur de questions/réponses IA
+│   ├── Génération de synthèses automatiques
+│   ├── Détection de patterns et tendances
+│   ├── Recommandations intelligentes
+│   └── Exports analytiques
 │
 └── 🔌 EXTENSIONS
     ├── Plugins d'import (TIFF, PDF, etc.)
@@ -59,6 +72,14 @@ ARCHIVIA PLATFORM
     ├── Exports (PDF, IIIF, JSON-LD)
     └── Intégrations (Notion, Airtable)
 ```
+
+### 1.3 Philosophie des 3 Espaces
+
+| Espace | Objectif | Utilisateurs | Actions Clés |
+|--------|----------|--------------|--------------|
+| **WORKSPACE** | Construire et enrichir l'archive | Chercheurs, archivistes | Importer, transcrire, annoter, valider |
+| **READER** | Consulter et naviguer l'archive | Grand public, étudiants | Explorer, lire, visualiser, partager |
+| **INSIGHT** | Comprendre et analyser l'archive | Analystes, historiens | Questionner, synthétiser, découvrir, exporter |
 
 ---
 
@@ -1102,6 +1123,944 @@ export class IIIFExporter {
   }
 }
 ```
+
+### 3.7 Ontologie Progressive (INNOVATION MAJEURE)
+
+L'ontologie n'est pas statique mais **évolue dans le temps** avec versioning complet et traçabilité des enrichissements.
+
+**Concept clé** : Chaque modification de l'ontologie est versionnée, permettant de voir comment la compréhension du corpus a évolué.
+
+```typescript
+// packages/ontology-engine/src/progressive-ontology.ts
+
+// Schema de versioning ontologique
+export interface OntologyVersion {
+  id: string;
+  projectId: string;
+  versionNumber: number;
+  createdAt: Date;
+  createdBy: string;
+  changeType: 'entity_added' | 'entity_modified' | 'entity_removed' |
+              'relation_added' | 'relation_modified' | 'relation_removed' |
+              'merge' | 'split' | 'reclassification';
+  description: string;
+  previousVersionId?: string;
+  snapshot: OntologySnapshot;
+}
+
+export interface OntologySnapshot {
+  entities: Entity[];
+  relationships: EntityRelationship[];
+  statistics: OntologyStats;
+}
+
+export interface OntologyStats {
+  totalEntities: number;
+  entitiesByType: Record<string, number>;
+  totalRelationships: number;
+  relationshipsByType: Record<string, number>;
+  avgEntityMentions: number;
+  graphDensity: number;
+  clusteringCoefficient: number;
+}
+
+export class ProgressiveOntologyManager {
+  private db: DatabaseClient;
+  private aiService: AIService;
+
+  /**
+   * Phase 1: Extraction initiale automatique
+   * Lors de l'import de nouveaux documents
+   */
+  async initialExtraction(documents: Document[]): Promise<OntologyVersion> {
+    const entities: Entity[] = [];
+    const relationships: EntityRelationship[] = [];
+
+    for (const doc of documents) {
+      // NER automatique
+      const extractedEntities = await this.extractEntitiesNLP(doc.transcription);
+
+      // Résolution d'entités (éviter les doublons)
+      for (const entity of extractedEntities) {
+        const existingEntity = await this.findSimilarEntity(entity);
+        if (existingEntity) {
+          // Ajouter comme alias ou fusionner
+          await this.mergeEntities(existingEntity, entity, doc.id);
+        } else {
+          entities.push(entity);
+        }
+      }
+
+      // Extraction de relations basiques
+      const docRelations = await this.extractBasicRelations(doc, entities);
+      relationships.push(...docRelations);
+    }
+
+    return this.createVersion('initial_extraction', entities, relationships);
+  }
+
+  /**
+   * Phase 2: Enrichissement progressif par l'utilisateur
+   * Via l'interface Studio
+   */
+  async userEnrichment(
+    entityId: string,
+    enrichmentData: EntityEnrichment,
+    userId: string
+  ): Promise<OntologyVersion> {
+    const entity = await this.getEntity(entityId);
+
+    const enrichedEntity = {
+      ...entity,
+      ...enrichmentData,
+      metadata: {
+        ...entity.metadata,
+        lastEnrichedBy: userId,
+        lastEnrichedAt: new Date(),
+        enrichmentHistory: [
+          ...(entity.metadata.enrichmentHistory || []),
+          {
+            date: new Date(),
+            userId,
+            changes: enrichmentData,
+          },
+        ],
+      },
+    };
+
+    await this.updateEntity(enrichedEntity);
+
+    // Propager les changements aux relations
+    await this.propagateChanges(entityId);
+
+    return this.createVersion('user_enrichment', [enrichedEntity], []);
+  }
+
+  /**
+   * Phase 3: Suggestion IA de nouvelles relations
+   * Basé sur l'analyse sémantique du corpus
+   */
+  async suggestNewRelations(): Promise<RelationSuggestion[]> {
+    const suggestions: RelationSuggestion[] = [];
+    const entities = await this.getAllEntities();
+
+    // Analyse de co-occurrence
+    const coOccurrences = await this.analyzeCoOccurrences();
+
+    for (const [pair, frequency] of coOccurrences) {
+      if (frequency > 3 && !await this.relationExists(pair[0], pair[1])) {
+        // Demander à l'IA de qualifier la relation
+        const suggestedRelation = await this.aiService.suggestRelationType(
+          entities.find(e => e.id === pair[0])!,
+          entities.find(e => e.id === pair[1])!,
+          await this.getCoOccurrenceContexts(pair)
+        );
+
+        suggestions.push({
+          sourceId: pair[0],
+          targetId: pair[1],
+          suggestedType: suggestedRelation.type,
+          confidence: suggestedRelation.confidence,
+          evidence: suggestedRelation.contexts,
+        });
+      }
+    }
+
+    // Analyse de similarité sémantique
+    const semanticSuggestions = await this.findSemanticRelations(entities);
+    suggestions.push(...semanticSuggestions);
+
+    return suggestions.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  /**
+   * Phase 4: Évolution temporelle de l'ontologie
+   * Visualiser comment les concepts évoluent
+   */
+  async getOntologyTimeline(projectId: string): Promise<OntologyTimeline> {
+    const versions = await this.getAllVersions(projectId);
+
+    return {
+      versions: versions.map(v => ({
+        id: v.id,
+        date: v.createdAt,
+        changeType: v.changeType,
+        description: v.description,
+        stats: v.snapshot.statistics,
+      })),
+      growthCurve: this.calculateGrowthCurve(versions),
+      significantEvents: this.identifySignificantChanges(versions),
+    };
+  }
+
+  /**
+   * Phase 5: Comparaison de versions
+   * Voir les différences entre deux snapshots
+   */
+  async compareVersions(
+    versionA: string,
+    versionB: string
+  ): Promise<OntologyDiff> {
+    const snapshotA = await this.getVersionSnapshot(versionA);
+    const snapshotB = await this.getVersionSnapshot(versionB);
+
+    return {
+      addedEntities: this.findAddedEntities(snapshotA, snapshotB),
+      removedEntities: this.findRemovedEntities(snapshotA, snapshotB),
+      modifiedEntities: this.findModifiedEntities(snapshotA, snapshotB),
+      addedRelations: this.findAddedRelations(snapshotA, snapshotB),
+      removedRelations: this.findRemovedRelations(snapshotA, snapshotB),
+      statisticsDiff: this.compareStatistics(
+        snapshotA.statistics,
+        snapshotB.statistics
+      ),
+    };
+  }
+
+  /**
+   * Phase 6: Fusion intelligente
+   * Combiner les contributions de plusieurs utilisateurs
+   */
+  async mergeContributions(
+    contributionIds: string[]
+  ): Promise<OntologyVersion> {
+    const contributions = await Promise.all(
+      contributionIds.map(id => this.getContribution(id))
+    );
+
+    // Détection de conflits
+    const conflicts = this.detectConflicts(contributions);
+
+    if (conflicts.length > 0) {
+      // Résolution automatique ou manuelle selon la gravité
+      for (const conflict of conflicts) {
+        if (conflict.autoResolvable) {
+          await this.autoResolveConflict(conflict);
+        } else {
+          await this.flagForManualReview(conflict);
+        }
+      }
+    }
+
+    // Fusionner les changements non-conflictuels
+    const mergedChanges = this.mergeNonConflicting(contributions);
+
+    return this.createVersion('merge', mergedChanges.entities, mergedChanges.relations);
+  }
+}
+
+// Schéma de base de données pour le versioning
+/*
+CREATE TABLE ontology_versions (
+  id UUID PRIMARY KEY,
+  project_id UUID REFERENCES projects(id),
+  version_number INTEGER NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES users(id),
+  change_type VARCHAR(50) NOT NULL,
+  description TEXT,
+  previous_version_id UUID REFERENCES ontology_versions(id),
+  snapshot JSONB NOT NULL,
+  UNIQUE(project_id, version_number)
+);
+
+CREATE TABLE entity_history (
+  id UUID PRIMARY KEY,
+  entity_id UUID REFERENCES entities(id),
+  version_id UUID REFERENCES ontology_versions(id),
+  change_type VARCHAR(50) NOT NULL,
+  old_value JSONB,
+  new_value JSONB,
+  changed_by UUID REFERENCES users(id),
+  changed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_versions_project ON ontology_versions(project_id, version_number DESC);
+CREATE INDEX idx_entity_history ON entity_history(entity_id, changed_at DESC);
+*/
+```
+
+### 3.8 Génération de Contenu IA (INNOVATION MAJEURE)
+
+Moteur de génération automatique de contenus éditoriaux basé sur l'analyse de l'archive.
+
+**Types de contenu générés** :
+1. **Synthèses documentaires** - Résumés de collections
+2. **Descriptions contextuelles** - Contexte historique enrichi
+3. **Narratifs thématiques** - Stories automatiques
+4. **Réponses aux questions** - Q&A sur le corpus
+5. **Métadonnées enrichies** - Tags, catégories, périodes
+6. **Transcriptions améliorées** - Correction et structuration
+
+```typescript
+// packages/ai-services/src/content-generator.ts
+
+export class ContentGenerator {
+  private llmClient: LLMClient;
+  private ontology: ProgressiveOntologyManager;
+  private vectorSearch: HybridSearchEngine;
+
+  /**
+   * Génération de synthèse documentaire
+   * Crée un résumé structuré d'une collection de documents
+   */
+  async generateCollectionSummary(
+    documentIds: string[],
+    options: SummaryOptions
+  ): Promise<GeneratedSummary> {
+    const documents = await this.getDocuments(documentIds);
+    const entities = await this.getRelatedEntities(documentIds);
+    const relationships = await this.getRelationships(entities.map(e => e.id));
+
+    const prompt = `
+      Tu es un historien spécialisé dans l'analyse de documents patrimoniaux.
+
+      DOCUMENTS (${documents.length} éléments):
+      ${documents.map(d => `
+        - Titre: ${d.title}
+        - Période: ${d.period}
+        - Transcription: ${d.transcription?.substring(0, 500)}...
+        - Contexte: ${d.historicalContext}
+      `).join('\n')}
+
+      ENTITÉS IDENTIFIÉES:
+      ${entities.map(e => `- ${e.name} (${e.type}): ${e.description}`).join('\n')}
+
+      RELATIONS:
+      ${relationships.map(r => `- ${r.source} --[${r.type}]--> ${r.target}`).join('\n')}
+
+      Génère une synthèse structurée comprenant:
+      1. Vue d'ensemble (3-5 phrases)
+      2. Thèmes principaux identifiés
+      3. Personnages clés et leurs rôles
+      4. Chronologie des événements
+      5. Lieux mentionnés et leur importance
+      6. Observations historiographiques
+      7. Questions ouvertes pour recherche future
+
+      Style: académique mais accessible
+      Longueur: ${options.length || 'medium'}
+      Langue: ${options.language || 'fr'}
+    `;
+
+    const response = await this.llmClient.generate(prompt, {
+      model: options.model || 'claude-3-sonnet',
+      temperature: 0.3,
+      maxTokens: options.maxTokens || 2000,
+    });
+
+    return {
+      content: response.text,
+      metadata: {
+        generatedAt: new Date(),
+        model: options.model,
+        documentCount: documents.length,
+        entityCount: entities.length,
+        confidence: this.calculateConfidence(response),
+      },
+      sections: this.parseSections(response.text),
+    };
+  }
+
+  /**
+   * Génération de description contextuelle pour une image/document
+   * Enrichit automatiquement les métadonnées
+   */
+  async generateContextualDescription(
+    documentId: string
+  ): Promise<EnrichedDescription> {
+    const document = await this.getDocument(documentId);
+    const similarDocs = await this.vectorSearch.findSimilar(documentId, 5);
+    const entities = await this.getDocumentEntities(documentId);
+    const historicalContext = await this.getRelevantHistoricalContext(document);
+
+    const prompt = `
+      DOCUMENT PRINCIPAL:
+      - Type: ${document.type}
+      - Titre actuel: ${document.title}
+      - Période: ${document.period}
+      - Tags existants: ${document.tags.join(', ')}
+      ${document.transcription ? `- Transcription: ${document.transcription}` : ''}
+
+      DOCUMENTS SIMILAIRES:
+      ${similarDocs.map(d => `- ${d.title} (similarité: ${d.similarity})`).join('\n')}
+
+      ENTITÉS LIÉES:
+      ${entities.map(e => `- ${e.name} (${e.type})`).join('\n')}
+
+      CONTEXTE HISTORIQUE:
+      ${historicalContext}
+
+      Génère:
+      1. Une description enrichie (2-3 paragraphes) contextualisant ce document
+      2. Des tags additionnels pertinents (5-10)
+      3. Une période plus précise si possible
+      4. Des liens thématiques avec d'autres documents
+      5. Des questions que ce document soulève
+      6. Son importance historique
+
+      Format: JSON structuré
+    `;
+
+    const response = await this.llmClient.generate(prompt, {
+      model: 'claude-3-sonnet',
+      temperature: 0.2,
+      responseFormat: 'json',
+    });
+
+    return JSON.parse(response.text);
+  }
+
+  /**
+   * Génération automatique de Story/Narratif
+   * Crée un parcours narratif à partir de documents
+   */
+  async generateStory(
+    themeOrQuery: string,
+    projectId: string,
+    options: StoryOptions
+  ): Promise<GeneratedStory> {
+    // Recherche sémantique des documents pertinents
+    const relevantDocs = await this.vectorSearch.search({
+      query: themeOrQuery,
+      projectId,
+      mode: 'semantic',
+      limit: options.maxDocuments || 20,
+    });
+
+    // Analyse du fil narratif potentiel
+    const narrativeStructure = await this.analyzeNarrativeStructure(
+      relevantDocs.documents
+    );
+
+    const prompt = `
+      Tu es un médiateur culturel expert en narration patrimoniale.
+
+      THÈME: "${themeOrQuery}"
+
+      DOCUMENTS DISPONIBLES (${relevantDocs.documents.length}):
+      ${relevantDocs.documents.map((d, i) => `
+        ${i + 1}. ${d.title}
+        - ID: ${d.id}
+        - Période: ${d.period}
+        - Résumé: ${d.description}
+        - Entités: ${d.entities?.join(', ')}
+      `).join('\n')}
+
+      STRUCTURE NARRATIVE SUGGÉRÉE:
+      ${JSON.stringify(narrativeStructure, null, 2)}
+
+      Crée un parcours narratif comprenant:
+      1. Titre accrocheur de la story
+      2. Introduction captivante (3-4 phrases)
+      3. Séquence ordonnée de documents avec:
+         - Transition narrative entre chaque document
+         - Points d'intérêt à mettre en valeur (hotspots suggérés)
+         - Questions à poser au visiteur
+      4. Conclusion et ouverture
+      5. Pour chaque document, suggère:
+         - Durée de consultation recommandée
+         - Éléments visuels à mettre en avant
+         - Liens avec les autres documents
+
+      Style: ${options.tone || 'engaging'} (engaging, academic, accessible, dramatic)
+      Public cible: ${options.audience || 'general'}
+      Durée estimée: ${options.duration || '10 minutes'}
+
+      Format: JSON structuré pour intégration directe
+    `;
+
+    const response = await this.llmClient.generate(prompt, {
+      model: 'claude-3-opus',
+      temperature: 0.5,
+      maxTokens: 4000,
+      responseFormat: 'json',
+    });
+
+    const storyData = JSON.parse(response.text);
+
+    // Enrichir avec des hotspots IA-suggérés
+    for (const item of storyData.sequence) {
+      const suggestedHotspots = await this.suggestHotspots(item.documentId);
+      item.suggestedHotspots = suggestedHotspots;
+    }
+
+    return {
+      id: generateId(),
+      title: storyData.title,
+      theme: themeOrQuery,
+      introduction: storyData.introduction,
+      sequence: storyData.sequence,
+      conclusion: storyData.conclusion,
+      metadata: {
+        generatedAt: new Date(),
+        model: 'claude-3-opus',
+        documentCount: relevantDocs.documents.length,
+        estimatedDuration: storyData.estimatedDuration,
+      },
+      status: 'draft', // Nécessite validation humaine
+    };
+  }
+
+  /**
+   * Moteur de Questions/Réponses sur le corpus
+   * RAG (Retrieval Augmented Generation) pour répondre aux questions
+   */
+  async answerQuestion(
+    question: string,
+    projectId: string
+  ): Promise<AnswerResult> {
+    // Récupération des documents pertinents
+    const relevantDocs = await this.vectorSearch.search({
+      query: question,
+      projectId,
+      mode: 'hybrid',
+      limit: 10,
+    });
+
+    // Récupération des entités pertinentes
+    const relevantEntities = await this.searchEntities(question, projectId);
+
+    const prompt = `
+      Tu es un assistant de recherche spécialisé dans l'analyse de corpus patrimoniaux.
+
+      QUESTION: "${question}"
+
+      SOURCES DOCUMENTAIRES:
+      ${relevantDocs.documents.map((d, i) => `
+        [${i + 1}] ${d.title} (${d.period})
+        ${d.transcription || d.description}
+      `).join('\n\n')}
+
+      ENTITÉS CONNUES:
+      ${relevantEntities.map(e => `- ${e.name}: ${e.description}`).join('\n')}
+
+      Réponds à la question en:
+      1. Citant précisément les sources (numéro entre crochets)
+      2. Distinguant les faits établis des hypothèses
+      3. Mentionnant les lacunes dans les sources si pertinent
+      4. Suggérant des pistes de recherche complémentaires
+
+      Format:
+      - Réponse principale (2-3 paragraphes)
+      - Sources citées avec pertinence
+      - Niveau de confiance (high/medium/low)
+      - Questions connexes suggérées
+    `;
+
+    const response = await this.llmClient.generate(prompt, {
+      model: 'claude-3-sonnet',
+      temperature: 0.1,
+    });
+
+    return {
+      answer: this.parseAnswer(response.text),
+      sources: relevantDocs.documents.map(d => ({
+        id: d.id,
+        title: d.title,
+        relevanceScore: d.similarity,
+      })),
+      confidence: this.extractConfidence(response.text),
+      relatedQuestions: this.extractRelatedQuestions(response.text),
+      generatedAt: new Date(),
+    };
+  }
+
+  /**
+   * Amélioration automatique des transcriptions
+   * Correction orthographique, structuration, normalisation
+   */
+  async improveTranscription(
+    transcription: string,
+    context: TranscriptionContext
+  ): Promise<ImprovedTranscription> {
+    const prompt = `
+      Tu es un paléographe expert en documents français du ${context.period}.
+
+      TRANSCRIPTION BRUTE:
+      """
+      ${transcription}
+      """
+
+      CONTEXTE:
+      - Type de document: ${context.documentType}
+      - Période: ${context.period}
+      - Auteur probable: ${context.author || 'Inconnu'}
+      - Langue: ${context.language || 'Français'}
+
+      Améliore la transcription en:
+      1. Corrigeant l'orthographe selon les conventions de l'époque
+      2. Ajoutant la ponctuation manquante
+      3. Structurant en paragraphes logiques
+      4. Identifiant et balisantmarquant:
+         - [illisible] pour les parties non déchiffrables
+         - [incertain: ...] pour les lectures douteuses
+         - [rature: ...] pour les passages raturés
+         - [ajout marginal: ...] pour les annotations
+      5. Normalisant les abréviations courantes
+      6. Préservant les particularités linguistiques significatives
+
+      Fournis:
+      - Transcription améliorée
+      - Liste des corrections majeures
+      - Notes paléographiques
+      - Niveau de confiance global
+    `;
+
+    const response = await this.llmClient.generate(prompt, {
+      model: 'claude-3-sonnet',
+      temperature: 0.1,
+    });
+
+    return this.parseImprovedTranscription(response.text);
+  }
+
+  /**
+   * Suggestion automatique de hotspots sur une image
+   * Utilise la vision IA pour identifier les zones d'intérêt
+   */
+  async suggestHotspots(documentId: string): Promise<SuggestedHotspot[]> {
+    const document = await this.getDocument(documentId);
+
+    if (document.type !== 'image') {
+      return [];
+    }
+
+    // Analyse visuelle de l'image
+    const visualAnalysis = await this.llmClient.analyzeImage(document.filePath, {
+      prompt: `
+        Analyse cette image patrimoniale et identifie les zones d'intérêt:
+        - Personnes (visages, groupes)
+        - Objets significatifs (outils, vêtements, équipements)
+        - Éléments architecturaux ou paysagers
+        - Textes ou inscriptions visibles
+        - Détails techniques ou artistiques remarquables
+
+        Pour chaque zone, fournis:
+        - Position approximative (x%, y%)
+        - Type d'élément
+        - Description
+        - Importance (1-5)
+        - Questions que cela soulève
+
+        Format: JSON array
+      `,
+      model: 'claude-3-sonnet',
+    });
+
+    return visualAnalysis.map((zone: any) => ({
+      x: zone.x,
+      y: zone.y,
+      type: zone.type,
+      label: zone.description,
+      importance: zone.importance,
+      suggestedQuestions: zone.questions,
+      confidence: zone.confidence,
+    }));
+  }
+}
+
+// Types pour la génération de contenu
+interface GeneratedSummary {
+  content: string;
+  metadata: GenerationMetadata;
+  sections: {
+    overview: string;
+    themes: string[];
+    characters: { name: string; role: string }[];
+    timeline: { date: string; event: string }[];
+    locations: { name: string; significance: string }[];
+    observations: string[];
+    openQuestions: string[];
+  };
+}
+
+interface GeneratedStory {
+  id: string;
+  title: string;
+  theme: string;
+  introduction: string;
+  sequence: {
+    order: number;
+    documentId: string;
+    transition: string;
+    focusPoints: string[];
+    questions: string[];
+    duration: number;
+    suggestedHotspots?: SuggestedHotspot[];
+  }[];
+  conclusion: string;
+  metadata: GenerationMetadata;
+  status: 'draft' | 'published';
+}
+
+interface AnswerResult {
+  answer: {
+    mainResponse: string;
+    facts: string[];
+    hypotheses: string[];
+    gaps: string[];
+  };
+  sources: { id: string; title: string; relevanceScore: number }[];
+  confidence: 'high' | 'medium' | 'low';
+  relatedQuestions: string[];
+  generatedAt: Date;
+}
+```
+
+### 3.9 Espaces de Travail Détaillés
+
+#### 3.9.1 WORKSPACE - Espace Travail sur l'Archive
+
+```typescript
+// apps/web/app/(auth)/workspace/page.tsx
+'use client';
+
+export default function WorkspacePage() {
+  return (
+    <WorkspaceLayout>
+      {/* Pipeline d'import */}
+      <ImportPipeline
+        onUpload={handleFileUpload}
+        supportedFormats={['jpg', 'png', 'tiff', 'pdf', 'heic']}
+        batchProcessing={true}
+      />
+
+      {/* File d'attente OCR */}
+      <OCRQueue
+        jobs={pendingJobs}
+        onRetry={retryJob}
+        onCancel={cancelJob}
+        showProgress={true}
+      />
+
+      {/* Éditeur de transcription */}
+      <TranscriptionEditor
+        document={selectedDocument}
+        aiSuggestions={true}
+        collaborativeEditing={true}
+        versionHistory={true}
+      />
+
+      {/* Gestionnaire d'annotations */}
+      <AnnotationManager
+        tools={['hotspot', 'region', 'note', 'correction']}
+        entityLinking={true}
+        validation={true}
+      />
+
+      {/* Éditeur d'ontologie */}
+      <OntologyEditor
+        mode="progressive"
+        aiSuggestions={true}
+        conflictResolution={true}
+        versioning={true}
+      />
+
+      {/* Générateur de métadonnées */}
+      <MetadataGenerator
+        autoTag={true}
+        aiEnrichment={true}
+        validation={true}
+      />
+    </WorkspaceLayout>
+  );
+}
+```
+
+**Fonctionnalités clés du WORKSPACE** :
+
+1. **Import intelligent**
+   - Drag & drop multiple
+   - Détection automatique du type (manuscrit, imprimé, photo)
+   - Extraction de métadonnées EXIF
+   - Prévisualisation avant import
+
+2. **OCR collaboratif**
+   - Transcription côte à côte (image + texte)
+   - Suggestions IA en temps réel
+   - Correction collaborative
+   - Historique des modifications
+
+3. **Enrichissement progressif**
+   - Ajout incrémental de métadonnées
+   - Validation par pairs
+   - Propagation des enrichissements
+   - Score de complétude
+
+4. **Gestion de l'ontologie**
+   - Création/modification d'entités
+   - Définition de relations
+   - Fusion d'entités dupliquées
+   - Export/import de schémas
+
+#### 3.9.2 READER - Espace Lecture de l'Archive
+
+```typescript
+// apps/web/app/(public)/reader/page.tsx
+'use client';
+
+export default function ReaderPage() {
+  return (
+    <ReaderLayout>
+      {/* Navigation multiple */}
+      <NavigationModes>
+        <GalleryView mode="masonry" />
+        <TimelineView interactive={true} />
+        <MapView clustering={true} />
+        <ThematicPaths curated={true} />
+      </NavigationModes>
+
+      {/* Visualisation immersive */}
+      <ImmersiveViewer
+        zoom={{ min: 0.5, max: 5 }}
+        hotspots={true}
+        annotations={true}
+        comparison={true}
+      />
+
+      {/* Mode Story */}
+      <StoryMode
+        autoplay={false}
+        narration={true}
+        relatedContent={true}
+      />
+
+      {/* Contextualization */}
+      <ContextPanel
+        historicalContext={true}
+        relatedDocuments={true}
+        entities={true}
+        bibliography={true}
+      />
+
+      {/* Partage et export */}
+      <ShareTools
+        socialMedia={true}
+        embed={true}
+        citation={true}
+        favorites={true}
+      />
+    </ReaderLayout>
+  );
+}
+```
+
+**Fonctionnalités clés du READER** :
+
+1. **Navigation fluide**
+   - Galerie responsive avec filtres dynamiques
+   - Timeline interactive zoomable
+   - Carte avec clusters géographiques
+   - Parcours thématiques guidés
+
+2. **Consultation enrichie**
+   - Zoom haute définition
+   - Hotspots interactifs
+   - Transcription synchronisée
+   - Contexte historique
+
+3. **Expérience narrative**
+   - Stories immersives
+   - Transitions animées
+   - Contenus connexes
+   - Mode plein écran
+
+4. **Accessibilité**
+   - PWA offline
+   - Mode sombre
+   - Taille de texte ajustable
+   - Lecteur d'écran compatible
+
+#### 3.9.3 INSIGHT - Espace Compréhension de l'Archive
+
+```typescript
+// apps/web/app/(auth)/insight/page.tsx
+'use client';
+
+export default function InsightPage() {
+  return (
+    <InsightLayout>
+      {/* Moteur de questions */}
+      <QuestionAnswering
+        naturalLanguage={true}
+        citeSources={true}
+        suggestFollowUp={true}
+      />
+
+      {/* Visualisation du graphe */}
+      <KnowledgeGraphVisualization
+        interactive={true}
+        filtering={true}
+        clustering={true}
+        pathfinding={true}
+      />
+
+      {/* Analyse thématique */}
+      <ThematicAnalysis
+        topicModeling={true}
+        trends={true}
+        comparisons={true}
+      />
+
+      {/* Génération de synthèses */}
+      <SynthesisGenerator
+        collections={true}
+        themes={true}
+        periods={true}
+        entities={true}
+      />
+
+      {/* Détection de patterns */}
+      <PatternDetection
+        temporal={true}
+        semantic={true}
+        visual={true}
+      />
+
+      {/* Recommandations */}
+      <RecommendationEngine
+        similarDocuments={true}
+        missingLinks={true}
+        researchSuggestions={true}
+      />
+
+      {/* Exports analytiques */}
+      <AnalyticsExport
+        formats={['pdf', 'csv', 'json', 'graph']}
+        customReports={true}
+        visualizations={true}
+      />
+    </InsightLayout>
+  );
+}
+```
+
+**Fonctionnalités clés de l'INSIGHT** :
+
+1. **Interrogation intelligente**
+   - Questions en langage naturel
+   - Réponses sourcées et contextualisées
+   - Suggestions de questions connexes
+   - Historique des requêtes
+
+2. **Exploration du graphe**
+   - Visualisation 3D interactive
+   - Filtrage par type d'entité/relation
+   - Détection de communautés
+   - Chemins entre entités
+
+3. **Analyses automatisées**
+   - Topic modeling
+   - Analyse de sentiment (pour textes)
+   - Détection d'anomalies
+   - Évolution temporelle
+
+4. **Génération de rapports**
+   - Synthèses automatiques
+   - Rapports personnalisés
+   - Visualisations exportables
+   - Formats académiques
 
 ---
 
