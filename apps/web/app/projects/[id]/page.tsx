@@ -76,6 +76,39 @@ export default function ProjectDetailPage() {
   const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
   const [ocrProcessing, setOcrProcessing] = useState<string | null>(null);
   const [extractingEntities, setExtractingEntities] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/export`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Export failed");
+      }
+
+      // Download the ZIP file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${project?.slug || "project"}-export.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Export error:", err);
+      alert(err instanceof Error ? err.message : "Erreur lors de l'export");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleExtractEntities = async (docId: string) => {
     setExtractingEntities(docId);
@@ -344,6 +377,13 @@ export default function ProjectDetailPage() {
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-heritage-900">Documents</h2>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            {exporting ? "Export..." : "Exporter HTML"}
+          </button>
           <Link
             href={`/projects/${projectId}/entities`}
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
