@@ -250,16 +250,18 @@ export default defineConfig({
 ### Schéma Base de Données
 
 ```sql
--- Tables principales
-projects          -- Projets patrimoniaux
-documents         -- Documents numérisés
-entities          -- Entités ontologiques (personnes, lieux, etc.)
-entity_relationships -- Relations entre entités
-annotations       -- Notes et hotspots sur documents
-users             -- Utilisateurs authentifiés
-sessions          -- Sessions NextAuth
-project_members   -- Permissions par projet
-app_config        -- Configuration globale (clés API, etc.)
+-- Tables principales (11 tables)
+projects              -- Projets patrimoniaux
+documents             -- Documents numérisés
+entities              -- Entités ontologiques (personnes, lieux, etc.)
+entity_relationships  -- Relations entre entités
+annotations           -- Notes et hotspots sur documents
+users                 -- Utilisateurs authentifiés
+sessions              -- Sessions NextAuth
+accounts              -- Comptes OAuth (NextAuth)
+verification_tokens   -- Tokens de vérification (NextAuth)
+project_members       -- Permissions par projet
+app_config            -- Configuration globale (clés API, etc.)
 ```
 
 ---
@@ -289,8 +291,9 @@ pnpm type-check && pnpm lint && pnpm test
 
 ```
 apps/web/tests/
-├── schemas.test.ts      # Validation Zod (10 tests)
-├── thumbnails.test.ts   # Génération miniatures (10 tests)
+├── schemas.test.ts      # Validation Zod (~30 tests)
+├── thumbnails.test.ts   # Génération miniatures (~15 tests)
+├── api.test.ts          # Tests API (~18 tests)
 └── setup.ts             # Configuration Vitest
 ```
 

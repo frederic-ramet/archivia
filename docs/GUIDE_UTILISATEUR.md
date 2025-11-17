@@ -63,8 +63,9 @@ Après installation avec seed :
 
 | Rôle | Permissions |
 |------|------------|
-| **Admin** | Accès complet, analytics, création utilisateurs |
-| **User** | Création projets, gestion documents |
+| **admin** | Accès complet, analytics, gestion globale |
+| **curator** | Création projets, gestion documents, curation |
+| **viewer** | Lecture seule des projets publics |
 
 ### Déconnexion
 
@@ -659,7 +660,7 @@ Incluez dans votre rapport :
 - [x] **OCR Vision API** : Transcription avec Claude API
 - [x] **Extraction d'entités** : Détection automatique personnes, lieux, événements
 - [x] **Graphe de connaissances** : Visualisation force-directed interactive
-- [x] **Suite de tests** : 20+ tests automatisés Vitest
+- [x] **Suite de tests** : 60+ tests automatisés Vitest
 - [x] **Export HTML statique** : Génération de sites autonomes (ZIP)
 - [x] **Recherche sémantique** : Full-text dans documents et entités
 - [x] **PWA** : Installation mobile, cache hors-ligne
