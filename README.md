@@ -2,6 +2,8 @@
 
 Archivia est une plateforme moderne de numérisation, analyse et valorisation du patrimoine culturel. Elle combine OCR, analyse sémantique et génération AI pour créer des expériences interactives autour des archives historiques.
 
+**Archivia fait émerger des ontologies structurées** à partir de documents bruts (entretiens, archives, témoignages), créant des graphes de connaissances directement exploitables par les LLMs pour du raisonnement augmenté.
+
 ## Fonctionnalités
 
 ### Gestion de Projet
@@ -16,6 +18,7 @@ Archivia est une plateforme moderne de numérisation, analyse et valorisation du
 - **Extraction d'entités** : Détection de personnes, lieux, événements, objets, concepts
 - **Relations sémantiques** : Construction automatique du graphe de connaissances
 - **Génération narrative** : Création d'histoires à partir des données du projet (3 styles, 3 longueurs)
+- **Émergence ontologique** : Construction de graphes de connaissances exploitables par LLM
 
 ### Visualisation & Recherche
 - **Graphe d'entités** : Visualisation force-directed interactive en SVG

@@ -15,14 +15,15 @@ Bienvenue dans Archivia, votre plateforme de préservation et valorisation du pa
 7. [OCR & Transcription](#ocr--transcription)
 8. [Extraction d'Entités](#extraction-dentités)
 9. [Graphe de Connaissances](#graphe-de-connaissances)
-10. [Génération d'Histoires](#génération-dhistoires)
-11. [Gestion des Membres](#gestion-des-membres)
-12. [Recherche Sémantique](#recherche-sémantique)
-13. [Export HTML](#export-html)
-14. [PWA & Mode Hors-ligne](#pwa--mode-hors-ligne)
-15. [Multilingue (i18n)](#multilingue-i18n)
-16. [Administration](#administration)
-17. [FAQ](#faq)
+10. [Exploitation Sémantique & Ontologie](#exploitation-sémantique--ontologie-émergente)
+11. [Génération d'Histoires](#génération-dhistoires)
+12. [Gestion des Membres](#gestion-des-membres)
+13. [Recherche Sémantique](#recherche-sémantique)
+14. [Export HTML](#export-html)
+15. [PWA & Mode Hors-ligne](#pwa--mode-hors-ligne)
+16. [Multilingue (i18n)](#multilingue-i18n)
+17. [Administration](#administration)
+18. [FAQ](#faq)
 
 ---
 
@@ -347,6 +348,77 @@ Le graphe révèle :
 - Les lieux récurrents
 - Les thèmes dominants
 - Les relations cachées entre documents
+
+---
+
+## Exploitation Sémantique & Ontologie Émergente
+
+Archivia ne se contente pas de stocker vos documents : il **fait émerger une ontologie** structurée que les intelligences artificielles peuvent exploiter.
+
+### Qu'est-ce que l'émergence ontologique ?
+
+Quand vous importez des entretiens, archives ou témoignages dans Archivia :
+
+1. **L'OCR transcrit** les textes
+2. **L'IA extrait** automatiquement les entités (personnes, lieux, événements)
+3. **Les relations se construisent** entre ces entités
+4. **Une ontologie émerge** : un graphe de connaissances structuré
+
+Cette ontologie n'est pas prédéfinie : elle **naît de vos données**.
+
+### Exploitation par l'Intelligence Artificielle
+
+L'ontologie générée permet aux LLMs (comme Claude) de :
+
+**Raisonner sur vos données**
+- Identifier des acteurs centraux
+- Détecter des patterns récurrents
+- Inférer des relations implicites
+- Contextualiser des événements
+
+**Répondre à des questions complexes**
+- "Quels lieux sont mentionnés par plusieurs témoins ?"
+- "Quelles personnes ont participé aux mêmes événements ?"
+- "Quels thèmes émergent de cette collection ?"
+
+**Générer du contenu enrichi**
+- Récits narratifs cohérents
+- Analyses croisées de témoignages
+- Synthèses thématiques
+
+### Cas d'usage concrets
+
+#### Entretiens Oraux
+
+Vous collectez 10 témoignages sur un événement historique :
+- Archivia extrait automatiquement les personnes, lieux, dates mentionnés
+- Le graphe révèle les convergences et divergences entre récits
+- L'IA peut générer une synthèse qui croise les témoignages
+
+#### Archives Familiales
+
+Vous numérisez des lettres de correspondance :
+- Les personnes mentionnées forment un réseau social implicite
+- Les lieux dessinent des trajectoires de vie
+- L'IA reconstruit l'arbre des relations familiales et sociales
+
+#### Collections Documentaires
+
+Vous constituez un fonds sur un thème (guerre, migration, métier...) :
+- Les concepts abstraits émergent des documents
+- Les événements se structurent chronologiquement
+- L'IA génère des parcours thématiques cohérents
+
+### Visualiser l'ontologie
+
+Le graphe de connaissances (section précédente) est la **représentation visuelle de l'ontologie émergente**. Plus vous ajoutez de documents, plus le graphe s'enrichit et révèle la structure profonde de votre collection.
+
+### Bonnes pratiques pour l'émergence
+
+1. **Variété des sources** : mélangez types de documents pour enrichir l'ontologie
+2. **Contexte historique** : renseignez les métadonnées pour améliorer l'extraction
+3. **Volume critique** : plus de documents = ontologie plus riche
+4. **Thématique cohérente** : restez dans un domaine pour des relations pertinentes
 
 ---
 
