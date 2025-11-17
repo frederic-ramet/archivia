@@ -16,6 +16,16 @@ export const metadata: Metadata = {
     "histoire",
     "culture",
   ],
+  manifest: "/manifest.json",
+  themeColor: "#7c3aed",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Archivia",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
