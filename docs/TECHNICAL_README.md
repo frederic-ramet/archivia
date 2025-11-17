@@ -7,6 +7,7 @@ Ce document complète le README principal avec des informations techniques avanc
 - [Prérequis Détaillés](#prérequis-détaillés)
 - [Configuration Avancée](#configuration-avancée)
 - [Problèmes Connus et Solutions](#problèmes-connus-et-solutions)
+- [Exploitation Sémantique & Émergence Ontologique](#exploitation-sémantique--émergence-ontologique)
 - [Architecture Technique](#architecture-technique)
 - [Tests et Qualité](#tests-et-qualité)
 - [Déploiement](#déploiement)
@@ -223,6 +224,203 @@ export default defineConfig({
 
 ---
 
+## Exploitation Sémantique & Émergence Ontologique
+
+Archivia n'est pas simplement un outil de numérisation : c'est un **système d'émergence ontologique** qui transforme des documents bruts en graphes de connaissances structurés, directement exploitables par les LLMs.
+
+### Principe Fondamental
+
+```
+Documents Bruts → OCR → Texte → Extraction Entités → Ontologie → Exploitation LLM
+      ↓              ↓           ↓                      ↓              ↓
+   Images      Transcription  Sémantique           Graphe de      Raisonnement
+   Archives    automatique    émergente           connaissances    augmenté
+```
+
+### Pipeline d'Extraction Sémantique
+
+1. **Transcription (OCR Vision)**
+   - Conversion image → texte avec Claude Vision
+   - Préservation du contexte spatial et temporel
+   - Détection automatique de la langue
+
+2. **Extraction d'Entités**
+   - **Personnes** : acteurs, témoins, auteurs
+   - **Lieux** : géographie, bâtiments, territoires
+   - **Événements** : faits historiques, dates clés
+   - **Objets** : artefacts, documents, outils
+   - **Concepts** : idées, valeurs, thèmes abstraits
+
+3. **Construction des Relations**
+   ```
+   Jean Dupont --[participé_à]--> Bataille de Verdun
+   Bataille de Verdun --[lieu_de]--> Verdun
+   Lettre --[écrite_par]--> Jean Dupont
+   Lettre --[mentionne]--> Espoir
+   ```
+
+4. **Émergence Ontologique**
+   - Les entités et relations forment un graphe sémantique
+   - Les patterns récurrents révèlent la structure du domaine
+   - L'ontologie émerge des données, pas d'un schéma prédéfini
+
+### Exploitation par les LLMs
+
+#### 1. Requêtes Contextuelles Enrichies
+
+```typescript
+// Exemple : Générer une histoire avec contexte ontologique complet
+const context = {
+  entities: await getProjectEntities(projectId),
+  relationships: await getEntityRelationships(projectId),
+  documents: await getDocumentsWithTranscriptions(projectId),
+  metadata: project.metadata
+};
+
+const story = await claude.generate({
+  prompt: `En utilisant ces entités et relations,
+           génère un récit narratif cohérent...`,
+  context: JSON.stringify(context)
+});
+```
+
+#### 2. Raisonnement sur le Graphe
+
+Le LLM peut :
+- **Inférer** des relations implicites (A connait B, B connait C → A pourrait connaître C)
+- **Détecter** des patterns (récurrence de thèmes, évolution temporelle)
+- **Contextualiser** des événements dans leur réseau de relations
+- **Identifier** des acteurs centraux via l'analyse des connexions
+
+#### 3. Requêtes Sémantiques Complexes
+
+```sql
+-- Recherche traditionnelle
+SELECT * FROM documents WHERE content LIKE '%guerre%'
+
+-- Recherche sémantique avec ontologie
+-- "Quels événements impliquent des personnes liées à des lieux spécifiques ?"
+SELECT DISTINCT e.name, e.type, er.relation_type
+FROM entities e
+JOIN entity_relationships er ON e.id = er.source_id
+WHERE e.type = 'event'
+  AND EXISTS (
+    SELECT 1 FROM entity_relationships er2
+    WHERE er2.target_id = e.id
+      AND er2.source_id IN (SELECT id FROM entities WHERE type = 'person')
+  );
+```
+
+### Cas d'Usage Avancés
+
+#### Entretiens Oraux / Témoignages
+
+1. **Transcription** des enregistrements audio/vidéo
+2. **Extraction automatique** des personnes mentionnées, lieux évoqués, événements racontés
+3. **Croisement** avec d'autres témoignages pour identifier :
+   - Récits convergents
+   - Perspectives divergentes
+   - Acteurs communs
+   - Lieux récurrents
+
+#### Archives Familiales
+
+- Construction automatique d'arbres généalogiques implicites
+- Cartographie des réseaux sociaux historiques
+- Identification des migrations et trajectoires de vie
+
+#### Collections Muséales
+
+- Provenance des objets via les relations
+- Contexte historique d'acquisition
+- Liens entre collections dispersées
+
+### Architecture pour l'Exploitation LLM
+
+```typescript
+interface OntologyContext {
+  // Entités typées
+  persons: Entity[];
+  places: Entity[];
+  events: Entity[];
+  objects: Entity[];
+  concepts: Entity[];
+
+  // Graphe de relations
+  relationships: {
+    source: Entity;
+    target: Entity;
+    type: string;
+    weight: number;
+  }[];
+
+  // Métadonnées temporelles
+  timeline: {
+    entity: Entity;
+    date: string;
+    context: string;
+  }[];
+
+  // Statistiques du graphe
+  centralityScores: Map<string, number>;
+  clusteringCoefficient: number;
+  pathLengths: Map<string, Map<string, number>>;
+}
+
+// Injection dans le prompt LLM
+function buildLLMPrompt(query: string, ontology: OntologyContext): string {
+  return `
+## Contexte Ontologique
+
+### Entités Clés
+${ontology.persons.map(p => `- ${p.name} (${p.description})`).join('\n')}
+${ontology.places.map(p => `- ${p.name} (${p.description})`).join('\n')}
+
+### Relations Sémantiques
+${ontology.relationships.map(r =>
+  `${r.source.name} --[${r.type}]--> ${r.target.name}`
+).join('\n')}
+
+### Requête Utilisateur
+${query}
+
+En utilisant ce contexte ontologique, fournis une réponse qui :
+1. Exploite les relations entre entités
+2. Respecte la cohérence temporelle
+3. Cite les sources documentaires
+`;
+}
+```
+
+### Métriques d'Émergence
+
+| Métrique | Description | Utilité |
+|----------|-------------|---------|
+| **Densité du graphe** | Ratio relations/entités | Richesse sémantique |
+| **Centralité** | Entités les plus connectées | Acteurs/concepts clés |
+| **Clustering** | Groupes d'entités liées | Thèmes émergents |
+| **Chemin moyen** | Distance entre entités | Cohésion narrative |
+
+### Avantages de l'Approche
+
+1. **Émergence vs Prescription**
+   - L'ontologie naît des données, pas d'un schéma rigide
+   - Flexibilité pour tout type de corpus
+
+2. **Exploitation LLM Native**
+   - Structure JSON directement injectable dans les prompts
+   - Relations typées pour raisonnement structuré
+
+3. **Scalabilité**
+   - Plus de documents = ontologie plus riche
+   - Effet réseau : chaque ajout enrichit le graphe global
+
+4. **Interopérabilité**
+   - Export vers formats standards (RDF, JSON-LD)
+   - Compatible avec outils de graph databases (Neo4j, etc.)
+
+---
+
 ## Architecture Technique
 
 ### Flux de Données
@@ -250,16 +448,18 @@ export default defineConfig({
 ### Schéma Base de Données
 
 ```sql
--- Tables principales
-projects          -- Projets patrimoniaux
-documents         -- Documents numérisés
-entities          -- Entités ontologiques (personnes, lieux, etc.)
-entity_relationships -- Relations entre entités
-annotations       -- Notes et hotspots sur documents
-users             -- Utilisateurs authentifiés
-sessions          -- Sessions NextAuth
-project_members   -- Permissions par projet
-app_config        -- Configuration globale (clés API, etc.)
+-- Tables principales (11 tables)
+projects              -- Projets patrimoniaux
+documents             -- Documents numérisés
+entities              -- Entités ontologiques (personnes, lieux, etc.)
+entity_relationships  -- Relations entre entités
+annotations           -- Notes et hotspots sur documents
+users                 -- Utilisateurs authentifiés
+sessions              -- Sessions NextAuth
+accounts              -- Comptes OAuth (NextAuth)
+verification_tokens   -- Tokens de vérification (NextAuth)
+project_members       -- Permissions par projet
+app_config            -- Configuration globale (clés API, etc.)
 ```
 
 ---
@@ -289,8 +489,9 @@ pnpm type-check && pnpm lint && pnpm test
 
 ```
 apps/web/tests/
-├── schemas.test.ts      # Validation Zod (10 tests)
-├── thumbnails.test.ts   # Génération miniatures (10 tests)
+├── schemas.test.ts      # Validation Zod (~30 tests)
+├── thumbnails.test.ts   # Génération miniatures (~15 tests)
+├── api.test.ts          # Tests API (~18 tests)
 └── setup.ts             # Configuration Vitest
 ```
 

@@ -2,6 +2,8 @@
 
 Archivia est une plateforme moderne de numérisation, analyse et valorisation du patrimoine culturel. Elle combine OCR, analyse sémantique et génération AI pour créer des expériences interactives autour des archives historiques.
 
+**Archivia fait émerger des ontologies structurées** à partir de documents bruts (entretiens, archives, témoignages), créant des graphes de connaissances directement exploitables par les LLMs pour du raisonnement augmenté.
+
 ## Fonctionnalités
 
 ### Gestion de Projet
@@ -9,13 +11,14 @@ Archivia est une plateforme moderne de numérisation, analyse et valorisation du
 - **Upload de documents** : Drag & drop avec preview, miniatures automatiques et métadonnées
 - **Suppression sécurisée** : Nettoyage complet des fichiers associés
 - **Permissions multi-utilisateurs** : Rôles owner/editor/viewer par projet
-- **Authentification NextAuth** : Système de connexion sécurisé avec rôles admin/user
+- **Authentification NextAuth** : Système de connexion sécurisé avec rôles admin/curator/viewer
 
 ### Intelligence Artificielle (Claude API)
 - **OCR Vision** : Transcription automatique d'images avec Claude Vision API
 - **Extraction d'entités** : Détection de personnes, lieux, événements, objets, concepts
 - **Relations sémantiques** : Construction automatique du graphe de connaissances
 - **Génération narrative** : Création d'histoires à partir des données du projet (3 styles, 3 longueurs)
+- **Émergence ontologique** : Construction de graphes de connaissances exploitables par LLM
 
 ### Visualisation & Recherche
 - **Graphe d'entités** : Visualisation force-directed interactive en SVG
@@ -28,7 +31,7 @@ Archivia est une plateforme moderne de numérisation, analyse et valorisation du
 - **Internationalisation** : Interface bilingue Français/Anglais avec persistance des préférences
 
 ### Tests & Qualité
-- **Suite de tests Vitest** : 20+ tests automatisés pour API et services
+- **Suite de tests Vitest** : 60+ tests automatisés pour API et services
 - **TypeScript strict** : Typage complet avec validation Zod
 
 ## Prérequis
@@ -198,7 +201,6 @@ archivia/
 ### Upload
 
 - `POST /api/upload` - Upload d'un fichier (avec génération miniature)
-- `PUT /api/upload` - Upload multiple (batch)
 
 ### Recherche & Analytics
 
@@ -217,11 +219,11 @@ archivia/
 
 ```bash
 # Base de données (libSQL/SQLite)
-DATABASE_URL=file:./local.db
+# IMPORTANT: Utilisez un chemin ABSOLU dans apps/web/.env
+DATABASE_URL=file:/chemin/absolu/vers/archivia/packages/database/data/archivia.db
 
-# Authentification NextAuth
-NEXTAUTH_SECRET=votre-secret-aleatoire-32-chars-min
-NEXTAUTH_URL=http://localhost:3000
+# Authentification NextAuth v5
+AUTH_SECRET=votre-secret-aleatoire-32-chars-min
 
 # API Claude (pour OCR, extraction entités, génération histoires)
 ANTHROPIC_API_KEY=sk-ant-api03-votre-cle
