@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { SearchBar } from "./search-bar";
+import { LanguageSelector } from "./language-selector";
 
 export function Navigation() {
   const pathname = usePathname();
@@ -80,6 +81,7 @@ export function Navigation() {
                 Connexion
               </Link>
             )}
+            <LanguageSelector />
           </div>
         </nav>
       </div>
