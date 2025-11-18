@@ -95,15 +95,7 @@ export const createDocumentSchema = z.object({
   category: z.string().optional(),
   period: z.string().optional(),
   tags: z.array(z.string()).default([]),
-  physicalMetadata: z
-    .object({
-      width: z.number().positive().optional(),
-      height: z.number().positive().optional(),
-      format: z.string().optional(),
-      dpi: z.number().positive().optional(),
-      size: z.number().positive().optional(),
-    })
-    .optional(),
+  metadata: z.record(z.string(), z.unknown()).default({}),
   historicalContext: z.string().optional(),
   position: z.number().int().nonnegative().optional(),
 });
@@ -118,7 +110,7 @@ export const updateDocumentSchema = createDocumentSchema.partial().omit({
 
 export const createEntitySchema = z.object({
   projectId: z.string().uuid(),
-  type: z.enum(["person", "place", "date", "event", "concept", "object"]),
+  type: z.enum(["person", "place", "event", "concept", "object"]),
   name: z.string().min(1).max(255),
   normalizedName: z.string().optional(),
   description: z.string().optional(),
@@ -138,16 +130,15 @@ export const updateEntitySchema = createEntitySchema.partial().omit({
 
 export const createAnnotationSchema = z.object({
   documentId: z.string().uuid(),
-  type: z.enum(["highlight", "note", "tag", "hotspot", "entity_link"]),
+  type: z.enum(["note", "correction", "hotspot", "region"]),
   content: z.string().optional(),
-  position: z.object({
-    x: z.number().min(0).max(100),
-    y: z.number().min(0).max(100),
-    width: z.number().min(0).max(100).optional(),
-    height: z.number().min(0).max(100).optional(),
-  }),
-  entityId: z.string().uuid().optional(),
+  x: z.number().min(0).max(100).optional(),
+  y: z.number().min(0).max(100).optional(),
+  width: z.number().min(0).max(100).optional(),
+  height: z.number().min(0).max(100).optional(),
   metadata: z.record(z.string(), z.unknown()).default({}),
+  userId: z.string().optional(),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
 });
 
 export const updateAnnotationSchema = createAnnotationSchema.partial().omit({
