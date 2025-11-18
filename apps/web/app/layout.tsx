@@ -3,6 +3,8 @@ import "./globals.css";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { Providers } from "@/components/providers";
+import InstallPWA from "@/components/pwa/InstallPWA";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
   title: "Archivia - Plateforme Patrimoniale",
@@ -17,7 +19,7 @@ export const metadata: Metadata = {
     "culture",
   ],
   manifest: "/manifest.json",
-  themeColor: "#7c3aed",
+  themeColor: "#A67B5B",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -40,6 +42,8 @@ export default function RootLayout({
           <Navigation />
           <main className="flex-1">{children}</main>
           <Footer />
+          <InstallPWA />
+          <ServiceWorkerRegistration />
         </Providers>
       </body>
     </html>
