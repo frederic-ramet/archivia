@@ -30,7 +30,8 @@ export default function HomePage() {
             Fonctionnalités
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="card p-6 text-center">
+            {/* OCR & Transcription */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4">📚</div>
               <h3 className="text-xl font-semibold mb-2">
                 Numérisation & OCR
@@ -40,7 +41,45 @@ export default function HomePage() {
                 l&apos;intelligence artificielle
               </p>
             </div>
-            <div className="card p-6 text-center">
+
+            {/* Interactive Gallery */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="text-4xl mb-4">🖼️</div>
+              <h3 className="text-xl font-semibold mb-2">
+                Galerie Interactive
+              </h3>
+              <p className="text-heritage-600">
+                Explorez vos documents avec filtres, recherche en temps réel,
+                mode immersif et navigation au clavier
+              </p>
+            </div>
+
+            {/* Annotations */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="text-4xl mb-4">✏️</div>
+              <h3 className="text-xl font-semibold mb-2">
+                Annotations Collaboratives
+              </h3>
+              <p className="text-heritage-600">
+                Annotez vos documents avec des formes, zones et notes.
+                Créez des hotspots narratifs interactifs
+              </p>
+            </div>
+
+            {/* Knowledge Graph */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
+              <div className="text-4xl mb-4">🧠</div>
+              <h3 className="text-xl font-semibold mb-2">
+                Graphe de Connaissances
+              </h3>
+              <p className="text-heritage-600">
+                Visualisez les entités et relations extraites automatiquement
+                avec un graphe interactif D3.js
+              </p>
+            </div>
+
+            {/* Search */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4">🔍</div>
               <h3 className="text-xl font-semibold mb-2">
                 Recherche Sémantique
@@ -50,12 +89,16 @@ export default function HomePage() {
                 grâce aux embeddings vectoriels
               </p>
             </div>
-            <div className="card p-6 text-center">
+
+            {/* Export & PWA */}
+            <div className="card p-6 text-center hover:shadow-lg transition-shadow">
               <div className="text-4xl mb-4">🌐</div>
-              <h3 className="text-xl font-semibold mb-2">Export HTML</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                Export HTML & PWA
+              </h3>
               <p className="text-heritage-600">
-                Générez des sites web autonomes déployables sur GitHub Pages ou
-                Netlify
+                Générez des sites web autonomes déployables et installez
+                l&apos;application pour un accès hors ligne
               </p>
             </div>
           </div>
