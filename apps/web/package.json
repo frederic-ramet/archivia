@@ -27,7 +27,7 @@
     "next-auth": "5.0.0-beta.30",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-konva": "^19.2.0",
+    "react-konva": "^18.2.10",
     "react-zoom-pan-pinch": "^3.7.0",
     "sharp": "^0.34.5",
     "zod": "^4.1.12"
